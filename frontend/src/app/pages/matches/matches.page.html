@@ -1,0 +1,309 @@
+<div class="page">
+  <app-page-header
+    eyebrow="Explainable matching"
+    title="My Matches"
+    description="Review the scores, matched skills, gaps, and recommendations produced by the FastAPI matching service."
+  >
+    <a class="btn btn--secondary" routerLink="/jobs">
+      <app-icon name="jobs" [size]="17" />
+      Explore jobs
+    </a>
+    <a class="btn btn--primary" routerLink="/cv">
+      <app-icon name="cv" [size]="17" />
+      {{ hasCv() ? 'Update CV' : 'Add CV' }}
+    </a>
+  </app-page-header>
+
+  @if (!hasCv()) {
+    <app-state-panel
+      variant="empty"
+      title="Add your CV to generate matches"
+      message="The matching API needs your CV text or analysed profile before it can rank roles."
+      actionLabel="Add your CV"
+      (action)="goToCv()"
+    />
+  } @else {
+    <section class="card card--padded ai-optin">
+      <div class="ai-optin__header">
+        <span class="ai-optin__icon"><app-icon name="sparkle" [size]="21" /></span>
+        <div>
+          <p class="eyebrow">Optional</p>
+          <h2 class="card__title">AI explanations</h2>
+          <p class="card__subtitle">
+            Ask OpenAI for a written explanation of an existing match. Compatibility
+            scores, skills, and gaps remain deterministic local results.
+          </p>
+        </div>
+      </div>
+
+      <label class="checkbox ai-optin__toggle">
+        <input
+          type="checkbox"
+          [checked]="includeLlm()"
+          (change)="setIncludeLlm($any($event.target).checked)"
+        />
+        <span>
+          <strong>Enable optional OpenAI explanations</strong>
+          <small>
+            Off by default. The backend only attempts remote analysis when both
+            request flags are true and the server allows it.
+          </small>
+        </span>
+      </label>
+
+      @if (includeLlm()) {
+        <label class="checkbox ai-optin__consent">
+          <input
+            type="checkbox"
+            [checked]="remoteConsent()"
+            (change)="setRemoteConsent($any($event.target).checked)"
+          />
+          <span>
+            <strong>I consent to sending my CV and job details to an external AI provider.</strong>
+            <small>
+              Only do this if you are comfortable sharing this information outside
+              this application. You can turn it off at any time.
+            </small>
+          </span>
+        </label>
+        @if (!remoteConsent()) {
+          <p class="hint">Confirm consent before using an AI explanation button.</p>
+        }
+      }
+
+      <p class="ai-optin__note">
+        <app-icon name="shield" [size]="15" />
+        Scores are always local. AI text never changes or recalculates your score.
+      </p>
+    </section>
+
+    @if (featuredJobId()) {
+      @if (featuredLoading()) {
+        <app-state-panel
+          variant="loading"
+          title="Matching the selected job"
+          message="Loading the full match breakdown for this role."
+        />
+      } @else if (featuredError(); as featuredFailure) {
+        <app-state-panel
+          variant="error"
+          title="Selected job match could not load"
+          [message]="featuredFailure.message"
+          actionLabel="Try again"
+          (action)="retryFeatured()"
+        />
+      } @else if (featured(); as selected) {
+        <section class="card card--padded featured-match">
+          <div class="featured-match__header">
+            <div class="featured-match__copy">
+              <p class="eyebrow">Selected job</p>
+              <h2>{{ selected.job.title || 'Untitled role' }}</h2>
+              <p class="card__subtitle">
+                {{ selected.job.category || 'Uncategorised' }} ·
+                <a class="link" [routerLink]="['/jobs', selected.job.job_id]">
+                  View full role
+                </a>
+              </p>
+            </div>
+            <app-score-ring
+              [score]="selected.match.overall_compatibility_score"
+              [caption]="classificationLabel(selected.match.classification)"
+              [tone]="classificationTone(selected.match.classification)"
+            />
+          </div>
+
+          <div class="featured-match__actions">
+            @if (includeLlm()) {
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                [disabled]="!canUseLlm() || llmState(selected.job.job_id).loading"
+                (click)="generateExplanation(selected.job.job_id)"
+              >
+                @if (llmState(selected.job.job_id).loading) {
+                  <span class="spinner spinner--dark" aria-hidden="true"></span>
+                  Generating…
+                } @else {
+                  <app-icon name="sparkle" [size]="15" />
+                  {{
+                    selected.match.explanation
+                      ? 'Refresh AI explanation'
+                      : 'Generate AI explanation'
+                  }}
+                }
+              </button>
+            }
+            <a class="btn btn--ghost btn--sm" routerLink="/matches">
+              Clear selection
+            </a>
+          </div>
+
+          @if (llmState(selected.job.job_id).error; as llmError) {
+            <div class="alert alert--error" role="alert">
+              <app-icon name="alert" [size]="18" />
+              <p>{{ llmError }}</p>
+            </div>
+          }
+
+          <app-match-details
+            [match]="selected.match"
+            [llmRequested]="llmState(selected.job.job_id).requested"
+            [llmAuthorized]="llmState(selected.job.job_id).authorized"
+          />
+        </section>
+      }
+    }
+
+    @if (error(); as apiError) {
+      <app-state-panel
+        variant="error"
+        title="Recommendations could not load"
+        [message]="apiError.message"
+        actionLabel="Try again"
+        (action)="loadRecommendations()"
+      />
+    } @else if (loading()) {
+      <app-state-panel
+        variant="loading"
+        title="Ranking your matches"
+        message="The API is comparing your skills and experience against the candidate pool."
+      />
+    } @else if (!rankedItems().length) {
+      <app-state-panel
+        variant="empty"
+        title="No recommendations returned"
+        message="Try widening the candidate pool or changing the preferred job category in Settings."
+        actionLabel="Open settings"
+        (action)="goToSettings()"
+      />
+    } @else {
+      <div class="row row--between matches-summary">
+        <div>
+          <h2 class="matches-summary__title">Ranked matches</h2>
+          <p class="muted small">
+            {{ rankedItems().length }} returned · {{ evaluatedCount() | number }}
+            evaluated from {{ candidateCount() | number }} candidates
+          </p>
+        </div>
+        <a class="link" routerLink="/settings">Matching settings</a>
+      </div>
+
+      @if (warnings().length) {
+        <div class="alert alert--warning">
+          <app-icon name="alert" [size]="18" />
+          <div>
+            <strong>API notes</strong>
+            <ul class="warning-list">
+              @for (warning of warnings(); track warning) {
+                <li>{{ warning }}</li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+
+      <section class="match-list" aria-label="Ranked job matches">
+        @for (item of rankedItems(); track item.job.job_id; let first = $first) {
+          <article class="card card--padded match-card">
+            <div class="match-card__header">
+              <span class="rank-badge">#{{ item.rank }}</span>
+              <div class="match-card__copy">
+                <span class="tag tag--accent">{{ item.job.category || 'Uncategorised' }}</span>
+                <h3>
+                  <a [routerLink]="['/jobs', item.job.job_id]">
+                    {{ item.job.title || 'Untitled role' }}
+                  </a>
+                </h3>
+                <p>{{ item.job.description_excerpt }}</p>
+              </div>
+              <app-score-ring
+                [score]="item.match.overall_compatibility_score"
+                [caption]="classificationLabel(item.match.classification)"
+                [tone]="classificationTone(item.match.classification)"
+              />
+            </div>
+
+            <div class="match-card__stats">
+              <span>
+                <strong>{{ item.match.matched_skills.length }}</strong>
+                matched skills
+              </span>
+              <span>
+                <strong>{{ item.match.missing_required_skills.length }}</strong>
+                missing required
+              </span>
+              <span>
+                <strong>{{ item.match.preferred_skills.length }}</strong>
+                preferred skills
+              </span>
+            </div>
+
+            @if (item.match.matched_skills.length) {
+              <div class="chip-list">
+                @for (skill of item.match.matched_skills.slice(0, 8); track skill.skill) {
+                  <span class="tag tag--success">{{ skill.skill }}</span>
+                }
+                @if (item.match.matched_skills.length > 8) {
+                  <span class="tag tag--neutral">
+                    +{{ item.match.matched_skills.length - 8 }} more
+                  </span>
+                }
+              </div>
+            }
+
+            <div class="match-card__actions">
+              <a class="btn btn--secondary btn--sm" [routerLink]="['/jobs', item.job.job_id]">
+                <app-icon name="external" [size]="14" />
+                View role
+              </a>
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                (click)="setFeaturedJob(item.job.job_id)"
+              >
+                <app-icon name="matches" [size]="14" />
+                Focus this match
+              </button>
+              @if (includeLlm()) {
+                <button
+                  type="button"
+                  class="btn btn--secondary btn--sm"
+                  [disabled]="!canUseLlm() || llmState(item.job.job_id).loading"
+                  (click)="generateExplanation(item.job.job_id)"
+                >
+                  @if (llmState(item.job.job_id).loading) {
+                    <span class="spinner spinner--dark" aria-hidden="true"></span>
+                    Generating…
+                  } @else {
+                    <app-icon name="sparkle" [size]="14" />
+                    {{
+                      item.match.explanation
+                        ? 'Refresh AI explanation'
+                        : 'AI explanation'
+                    }}
+                  }
+                </button>
+              }
+            </div>
+
+            @if (llmState(item.job.job_id).error; as llmError) {
+              <div class="alert alert--error" role="alert">
+                <app-icon name="alert" [size]="18" />
+                <p>{{ llmError }}</p>
+              </div>
+            }
+
+            <details class="match-panel" [open]="first">
+              <summary>Score breakdown, skills & recommendations</summary>
+              <app-match-details
+                [match]="item.match"
+                [llmRequested]="llmState(item.job.job_id).requested"
+                [llmAuthorized]="llmState(item.job.job_id).authorized"
+              />
+            </details>
+          </article>
+        }
+      </section>
+    }
+  }
+</div>

@@ -1,0 +1,351 @@
+<div class="page">
+  <app-page-header
+    eyebrow="Account"
+    title="Settings"
+    description="Manage your account, matching preferences, privacy choices, and saved workspace data."
+  />
+
+  @if (feedback()) {
+    <div
+      class="alert"
+      [class.alert--success]="feedbackTone() === 'success'"
+      [class.alert--error]="feedbackTone() === 'error'"
+      role="status"
+    >
+      <app-icon
+        [name]="feedbackTone() === 'success' ? 'check' : 'alert'"
+        [size]="18"
+      />
+      <p>{{ feedback() }}</p>
+    </div>
+  }
+
+  <div class="settings-layout">
+    <div class="stack">
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Profile</p>
+            <h2 class="card__title">Your account</h2>
+            <p class="card__subtitle">
+              Signed in as <strong>{{ auth.user()?.email }}</strong>.
+            </p>
+          </div>
+        </div>
+
+        <form class="stack preferences-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+          <div class="field">
+            <label for="profile-name">Full name</label>
+            <input
+              id="profile-name"
+              class="input"
+              type="text"
+              formControlName="fullName"
+              autocomplete="name"
+              maxlength="160"
+            />
+            @if (profileForm.controls.fullName.touched && profileForm.controls.fullName.invalid) {
+              <span class="field-error">Enter a name with at least two characters.</span>
+            }
+          </div>
+
+          <div class="row">
+            <button type="submit" class="btn btn--primary btn--sm" [disabled]="profileSaving()">
+              <app-icon name="check" [size]="15" />
+              Save profile
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              [disabled]="logoutSaving()"
+              (click)="logout()"
+            >
+              {{ logoutSaving() ? 'Signing out…' : 'Sign out' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Matching</p>
+            <h2 class="card__title">Recommendation preferences</h2>
+            <p class="card__subtitle">
+              These values are saved to your account and sent to the recommendation
+              endpoint. They do not change how scores are calculated.
+            </p>
+          </div>
+        </div>
+
+        <form class="stack preferences-form" [formGroup]="form" (ngSubmit)="savePreferences()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="recommendation-limit">Recommendations to return</label>
+              <input
+                id="recommendation-limit"
+                class="input"
+                type="number"
+                min="1"
+                max="50"
+                formControlName="recommendationLimit"
+              />
+              <span class="hint">Allowed range: 1–50.</span>
+              @if (form.controls.recommendationLimit.invalid && form.controls.recommendationLimit.touched) {
+                <span class="field-error">Enter a number from 1 to 50.</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="candidate-pool">Candidate pool size</label>
+              <input
+                id="candidate-pool"
+                class="input"
+                type="number"
+                min="1"
+                max="200"
+                formControlName="candidatePoolSize"
+              />
+              <span class="hint">Allowed range: 1–200 jobs to evaluate.</span>
+              @if (form.controls.candidatePoolSize.invalid && form.controls.candidatePoolSize.touched) {
+                <span class="field-error">Enter a number from 1 to 200.</span>
+              }
+            </div>
+
+            <div class="field field--full">
+              <label for="preferred-category">Preferred job category</label>
+              <input
+                id="preferred-category"
+                class="input"
+                type="text"
+                formControlName="preferredCategory"
+                placeholder="Leave blank to search all categories"
+                maxlength="120"
+              />
+              <span class="hint">
+                Optional exact category filter, such as “Data Science”.
+              </span>
+            </div>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" formControlName="allowRemoteAnalysis" />
+            <span>
+              Allow remote AI explanations when I explicitly request them for an
+              individual match.
+            </span>
+          </label>
+
+          <div class="row">
+            <button type="submit" class="btn btn--primary" [disabled]="saving()">
+              <app-icon name="check" [size]="16" />
+              Save preferences
+            </button>
+            <button type="button" class="btn btn--ghost" (click)="resetPreferences()">
+              Reset defaults
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Security</p>
+            <h2 class="card__title">Change password</h2>
+            <p class="card__subtitle">
+              Changing your password signs out every other active session.
+            </p>
+          </div>
+        </div>
+
+        <form class="stack preferences-form" [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+          <div class="field">
+            <label for="current-password">Current password</label>
+            <input
+              id="current-password"
+              class="input"
+              type="password"
+              formControlName="currentPassword"
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="new-password">New password</label>
+              <input
+                id="new-password"
+                class="input"
+                type="password"
+                formControlName="newPassword"
+                autocomplete="new-password"
+              />
+              <span class="hint">12–128 characters, three character classes.</span>
+            </div>
+            <div class="field">
+              <label for="confirm-password">Confirm new password</label>
+              <input
+                id="confirm-password"
+                class="input"
+                type="password"
+                formControlName="confirmPassword"
+                autocomplete="new-password"
+              />
+            </div>
+          </div>
+
+          @if (passwordForm.touched && passwordForm.hasError('passwordsMismatch')) {
+            <span class="field-error">New passwords do not match.</span>
+          }
+
+          <button type="submit" class="btn btn--secondary" [disabled]="passwordSaving()">
+            Change password
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Connection</p>
+            <h2 class="card__title">Backend API</h2>
+          </div>
+          @if (health()) {
+            <span class="tag tag--success">Online</span>
+          } @else if (connectionError()) {
+            <span class="tag tag--danger">Offline</span>
+          }
+        </div>
+
+        <div class="code-block">
+          <span class="muted small">Base URL</span>
+          <code>{{ apiBaseUrl }}</code>
+        </div>
+
+        <p class="muted small">
+          The URL is configured through <code>src/environments/environment.ts</code>.
+          Access tokens are held in memory and refresh tokens use an HttpOnly cookie.
+        </p>
+
+        @if (health(); as healthResponse) {
+          <div class="connection-result">
+            <strong>{{ healthResponse.service }} v{{ healthResponse.version }}</strong>
+            <span>Status: {{ healthResponse.status }}</span>
+            @if (checkedAt()) {
+              <span>Checked {{ formatDateTime(checkedAt()) }}</span>
+            }
+          </div>
+        }
+
+        @if (connectionError(); as apiError) {
+          <div class="alert alert--error" role="alert">
+            <app-icon name="alert" [size]="18" />
+            <p>{{ apiError.message }}</p>
+          </div>
+        }
+
+        <button
+          type="button"
+          class="btn btn--secondary btn--sm"
+          [disabled]="checkingConnection()"
+          (click)="checkConnection()"
+        >
+          @if (checkingConnection()) {
+            <span class="spinner spinner--dark" aria-hidden="true"></span>
+            Checking…
+          } @else {
+            <app-icon name="refresh" [size]="15" />
+            Test connection
+          }
+        </button>
+      </section>
+
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Data</p>
+            <h2 class="card__title">Saved account data</h2>
+          </div>
+        </div>
+
+        <div class="data-notes">
+          <p>
+            <strong>CV analyses</strong>
+            <span>Extracted profile snapshots and document metadata.</span>
+          </p>
+          <p>
+            <strong>Matching preferences</strong>
+            <span>Saved to your account and used for recommendations.</span>
+          </p>
+          <p>
+            <strong>Match history</strong>
+            <span>Saved results, visible only to your account.</span>
+          </p>
+        </div>
+
+        <div class="row">
+          <button type="button" class="btn btn--secondary btn--sm" (click)="clearActivity()">
+            Clear recent activity
+          </button>
+          <button
+            type="button"
+            class="btn btn--secondary btn--sm"
+            [disabled]="clearing()"
+            (click)="clearMatchHistory()"
+          >
+            Delete match history
+          </button>
+          <button
+            type="button"
+            class="btn btn--danger btn--sm"
+            [disabled]="clearing()"
+            (click)="clearWorkspace()"
+          >
+            <app-icon name="close" [size]="14" />
+            Delete CV data
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="grid grid--2">
+    <section class="card card--padded">
+      <div class="card__header">
+        <div>
+          <p class="eyebrow">AI privacy</p>
+          <h2 class="card__title">Optional explanations</h2>
+        </div>
+        <span class="tag tag--warning">Opt-in only</span>
+      </div>
+      <p class="muted small settings-copy">
+        Remote AI explanations require all of the following: the request flag
+        <code>include_llm</code>, explicit consent through
+        <code>allow_remote_analysis</code>, and the server setting
+        <code>ALLOW_REMOTE_LLM_ANALYSIS=true</code>.
+      </p>
+      <p class="muted small settings-copy">
+        If any requirement is missing, the app keeps the local deterministic score
+        and shows no AI explanation. No API keys are present in Angular.
+      </p>
+    </section>
+
+    <section class="card card--padded">
+      <div class="card__header">
+        <div>
+          <p class="eyebrow">Security</p>
+          <h2 class="card__title">Authenticated account</h2>
+        </div>
+        <span class="tag tag--success">Protected</span>
+      </div>
+      <p class="muted small settings-copy">
+        CV analysis, matching, history, and account settings require a signed-in
+        user. Passwords are stored as Argon2id hashes, access tokens stay in memory,
+        and refresh tokens use HttpOnly SameSite cookies with CSRF protection.
+      </p>
+    </section>
+  </div>
+</div>

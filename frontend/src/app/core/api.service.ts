@@ -1,0 +1,204 @@
+import {
+  HttpClient,
+  HttpEventType,
+  HttpParams,
+  HttpResponse,
+} from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { catchError, Observable, filter, map, tap, throwError, timeout } from 'rxjs';
+import { API_BASE_URL } from './api.config';
+import { toApiError } from './api-error';
+import {
+  CVAnalysisHistoryResponse,
+  CVAnalysisRequest,
+  CVProfileResponse,
+  HealthResponse,
+  JobDetailResponse,
+  JobListParams,
+  JobListResponse,
+  JobMatchRequest,
+  JobMatchResponse,
+  MatchHistoryResponse,
+  RecommendationRequest,
+  RecommendationResponse,
+  UserSettings,
+  UserSettingsUpdate,
+} from './api.models';
+
+const API_PREFIX = '/api/v1';
+const REQUEST_TIMEOUT_MS = 60_000;
+
+@Injectable({ providedIn: 'root' })
+export class JobMatchApiService {
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = normalizeBaseUrl(inject(API_BASE_URL));
+
+  health(): Observable<HealthResponse> {
+    return this.request(
+      this.http.get<HealthResponse>(`${this.baseUrl}/health`),
+    );
+  }
+
+  analyzeCv(request: CVAnalysisRequest): Observable<CVProfileResponse> {
+    return this.request(
+      this.http.post<CVProfileResponse>(
+        `${this.baseUrl}${API_PREFIX}/cv/analyze`,
+        request,
+      ),
+    );
+  }
+
+  analyzeCvUpload(
+    file: File,
+    metadata: { resumeId?: string | null; category?: string | null } = {},
+    onProgress?: (percent: number) => void,
+  ): Observable<CVProfileResponse> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+
+    if (metadata.resumeId?.trim()) {
+      form.append('resume_id', metadata.resumeId.trim());
+    }
+    if (metadata.category?.trim()) {
+      form.append('category', metadata.category.trim());
+    }
+
+    return this.request(
+      this.http
+        .post<CVProfileResponse>(
+          `${this.baseUrl}${API_PREFIX}/cv/analyze/upload`,
+          form,
+          { observe: 'events', reportProgress: true },
+        )
+        .pipe(
+          tap((event) => {
+            if (
+              event.type === HttpEventType.UploadProgress &&
+              event.total &&
+              onProgress
+            ) {
+              onProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          }),
+          filter(
+            (event): event is HttpResponse<CVProfileResponse> =>
+              event.type === HttpEventType.Response,
+          ),
+          map((event) => event.body as CVProfileResponse),
+        ),
+    );
+  }
+
+  getLatestCv(): Observable<CVProfileResponse> {
+    return this.request(
+      this.http.get<CVProfileResponse>(`${this.baseUrl}${API_PREFIX}/cv/latest`),
+    );
+  }
+
+  getCvHistory(limit = 20): Observable<CVAnalysisHistoryResponse> {
+    return this.request(
+      this.http.get<CVAnalysisHistoryResponse>(
+        `${this.baseUrl}${API_PREFIX}/cv/history`,
+        { params: new HttpParams().set('limit', String(limit)) },
+      ),
+    );
+  }
+
+  deleteCvHistory(): Observable<void> {
+    return this.request(
+      this.http.delete<void>(`${this.baseUrl}${API_PREFIX}/cv/history`),
+    );
+  }
+
+  getUserSettings(): Observable<UserSettings> {
+    return this.request(
+      this.http.get<UserSettings>(`${this.baseUrl}${API_PREFIX}/account/settings`),
+    );
+  }
+
+  updateUserSettings(settings: UserSettingsUpdate): Observable<UserSettings> {
+    return this.request(
+      this.http.put<UserSettings>(
+        `${this.baseUrl}${API_PREFIX}/account/settings`,
+        settings,
+      ),
+    );
+  }
+
+  getMatchHistory(limit = 20): Observable<MatchHistoryResponse> {
+    return this.request(
+      this.http.get<MatchHistoryResponse>(
+        `${this.baseUrl}${API_PREFIX}/matches/history`,
+        { params: new HttpParams().set('limit', String(limit)) },
+      ),
+    );
+  }
+
+  deleteMatchHistory(): Observable<void> {
+    return this.request(
+      this.http.delete<void>(`${this.baseUrl}${API_PREFIX}/matches/history`),
+    );
+  }
+
+  listJobs(params: JobListParams = {}): Observable<JobListResponse> {
+    let httpParams = new HttpParams();
+
+    if (params.category?.trim()) {
+      httpParams = httpParams.set('category', params.category.trim());
+    }
+    if (params.q?.trim()) {
+      httpParams = httpParams.set('q', params.q.trim());
+    }
+    if (params.offset !== undefined) {
+      httpParams = httpParams.set('offset', String(params.offset));
+    }
+    if (params.limit !== undefined) {
+      httpParams = httpParams.set('limit', String(params.limit));
+    }
+
+    return this.request(
+      this.http.get<JobListResponse>(`${this.baseUrl}${API_PREFIX}/jobs`, {
+        params: httpParams,
+      }),
+    );
+  }
+
+  getJob(jobId: string): Observable<JobDetailResponse> {
+    return this.request(
+      this.http.get<JobDetailResponse>(
+        `${this.baseUrl}${API_PREFIX}/jobs/${encodeURIComponent(jobId)}`,
+      ),
+    );
+  }
+
+  matchJob(request: JobMatchRequest): Observable<JobMatchResponse> {
+    return this.request(
+      this.http.post<JobMatchResponse>(
+        `${this.baseUrl}${API_PREFIX}/matches/job`,
+        request,
+      ),
+    );
+  }
+
+  getRecommendations(
+    request: RecommendationRequest,
+  ): Observable<RecommendationResponse> {
+    return this.request(
+      this.http.post<RecommendationResponse>(
+        `${this.baseUrl}${API_PREFIX}/matches/recommendations`,
+        request,
+      ),
+    );
+  }
+
+  private request<T>(source: Observable<T>): Observable<T> {
+    return source.pipe(
+      timeout(REQUEST_TIMEOUT_MS),
+      catchError((error: unknown) => throwError(() => toApiError(error))),
+    );
+  }
+}
+
+function normalizeBaseUrl(value: string): string {
+  return value.replace(/\/+$/, '');
+}

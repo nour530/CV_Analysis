@@ -1,0 +1,231 @@
+<div class="page">
+  <app-page-header
+    eyebrow="Overview"
+    title="Your matching dashboard"
+    description="See your CV status, explore the job catalog, and review explainable matches from the matching API."
+  >
+    <a class="btn btn--secondary" routerLink="/jobs">
+      <app-icon name="jobs" [size]="17" />
+      Explore jobs
+    </a>
+    <a class="btn btn--primary" routerLink="/cv">
+      <app-icon name="upload" [size]="17" />
+      {{ hasCv() ? 'Update CV' : 'Add CV' }}
+    </a>
+  </app-page-header>
+
+  @if (error(); as apiError) {
+    <app-state-panel
+      variant="error"
+      title="Dashboard could not load"
+      [message]="apiError.message"
+      actionLabel="Try again"
+      (action)="load()"
+    />
+  } @else if (loading()) {
+    <app-state-panel
+      variant="loading"
+      title="Loading your workspace"
+      message="Checking the API, job catalog, and your latest matches."
+    />
+  } @else {
+    <section class="grid grid--stats" aria-label="Workspace summary">
+      <article class="card stat-card">
+        <div class="row row--between">
+          <span class="stat-card__label">CV analysis</span>
+          <span class="stat-card__icon"><app-icon name="cv" [size]="18" /></span>
+        </div>
+        <strong class="stat-card__value">{{ hasCv() ? 'Ready' : 'Not added' }}</strong>
+        <span class="stat-card__meta">
+          @if (cvProfile(); as profile) {
+            {{ profile.skill_count }} skills · analysed {{ analysisDate() }}
+          } @else {
+            Add a CV to unlock matching.
+          }
+        </span>
+      </article>
+
+      <article class="card stat-card">
+        <div class="row row--between">
+          <span class="stat-card__label">Jobs available</span>
+          <span class="stat-card__icon"><app-icon name="jobs" [size]="18" /></span>
+        </div>
+        <strong class="stat-card__value">{{ jobsAvailable() | number }}</strong>
+        <span class="stat-card__meta">Loaded from the backend job catalog.</span>
+      </article>
+
+      <article class="card stat-card">
+        <div class="row row--between">
+          <span class="stat-card__label">Ranked matches</span>
+          <span class="stat-card__icon"><app-icon name="matches" [size]="18" /></span>
+        </div>
+        <strong class="stat-card__value">{{ rankedCount() | number }}</strong>
+        <span class="stat-card__meta">
+          {{ evaluatedCount() | number }} evaluated in your candidate pool.
+        </span>
+      </article>
+
+      <article class="card stat-card">
+        <div class="row row--between">
+          <span class="stat-card__label">API status</span>
+          <span class="stat-card__icon"><app-icon name="shield" [size]="18" /></span>
+        </div>
+        <strong class="stat-card__value">{{ apiStatus() }}</strong>
+        <span class="stat-card__meta">
+          @if (data()?.health; as health) {
+            {{ health.service }} v{{ health.version }}
+          } @else {
+            Health information unavailable.
+          }
+        </span>
+      </article>
+    </section>
+
+    <div class="grid grid--2 dashboard-grid">
+      <section class="card card--padded">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Recommendations</p>
+            <h2 class="card__title">Top recommended jobs</h2>
+            <p class="card__subtitle">
+              Ranked by the deterministic matching engine. Scores are not recalculated in the browser.
+            </p>
+          </div>
+          <a class="link" routerLink="/matches">View all</a>
+        </div>
+
+        @if (!hasCv()) {
+          <div class="empty-block">
+            <span class="empty-block__icon"><app-icon name="cv" [size]="24" /></span>
+            <div>
+              <h3>Your CV is the starting point</h3>
+              <p>Add a TXT, PDF, or DOCX CV to generate explainable job recommendations.</p>
+              <a class="btn btn--primary btn--sm" routerLink="/cv">Add your CV</a>
+            </div>
+          </div>
+        } @else if (!topMatches().length) {
+          <div class="empty-block">
+            <span class="empty-block__icon"><app-icon name="search" [size]="24" /></span>
+            <div>
+              <h3>No recommendations returned</h3>
+              <p>Try refreshing or widening your candidate pool in Settings.</p>
+              <a class="btn btn--secondary btn--sm" routerLink="/matches">Open matches</a>
+            </div>
+          </div>
+        } @else {
+          <div class="mini-match-list">
+            @for (item of topMatches(); track item.job.job_id) {
+              <a class="mini-match" [routerLink]="['/jobs', item.job.job_id]">
+                <app-score-ring
+                  [score]="item.match.overall_compatibility_score"
+                  [caption]="classificationLabel(item.match.classification)"
+                  [tone]="classificationTone(item.match.classification)"
+                />
+                <span class="mini-match__copy">
+                  <span class="mini-match__rank">Rank #{{ item.rank }}</span>
+                  <strong>{{ item.job.title || 'Untitled role' }}</strong>
+                  <small>
+                    {{ item.job.category || 'Uncategorised' }} ·
+                    {{ item.job.description_excerpt }}
+                  </small>
+                  <span class="mini-match__skills">
+                    @for (skill of item.match.matched_skills.slice(0, 3); track skill.skill) {
+                      <span class="tag tag--success">{{ skill.skill }}</span>
+                    }
+                    @if (item.match.missing_required_skills.length) {
+                      <span class="tag tag--warning">
+                        {{ item.match.missing_required_skills.length }} gap{{
+                          item.match.missing_required_skills.length === 1 ? '' : 's'
+                        }}
+                      </span>
+                    }
+                  </span>
+                </span>
+                <app-icon name="chevron-right" [size]="17" />
+              </a>
+            }
+          </div>
+        }
+      </section>
+
+      <div class="stack">
+        <section class="card card--padded">
+          <div class="card__header">
+            <div>
+              <p class="eyebrow">Activity</p>
+              <h2 class="card__title">Recent matching activity</h2>
+            </div>
+          </div>
+
+          @if (recentActivity().length) {
+            <ul class="activity-list">
+              @for (activity of recentActivity(); track activity.id) {
+                <li>
+                  <span class="activity-list__icon">
+                    <app-icon [name]="activityIcon(activity)" [size]="16" />
+                  </span>
+                  <div>
+                    <strong>{{ activity.title }}</strong>
+                    <p>{{ activity.detail }}</p>
+                    <small>{{ formatDateTime(activity.occurredAt) }}</small>
+                  </div>
+                  @if (activity.score !== undefined) {
+                    <span class="activity-list__score">{{ formatPercent(activity.score) }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="muted small activity-empty">
+              No activity yet. Analyse a CV or open a match to start your history.
+            </p>
+          }
+        </section>
+
+        <section class="card card--padded">
+          <div class="card__header">
+            <div>
+              <p class="eyebrow">Shortcuts</p>
+              <h2 class="card__title">Quick actions</h2>
+            </div>
+          </div>
+          <div class="quick-actions">
+            <a routerLink="/cv">
+              <span><app-icon name="cv" [size]="18" /></span>
+              <div>
+                <strong>Analyse your CV</strong>
+                <small>Upload a text file or paste your CV.</small>
+              </div>
+              <app-icon name="arrow-right" [size]="16" />
+            </a>
+            <a routerLink="/jobs">
+              <span><app-icon name="jobs" [size]="18" /></span>
+              <div>
+                <strong>Browse jobs</strong>
+                <small>Search the catalog and inspect role details.</small>
+              </div>
+              <app-icon name="arrow-right" [size]="16" />
+            </a>
+            <a routerLink="/matches">
+              <span><app-icon name="matches" [size]="18" /></span>
+              <div>
+                <strong>Review matches</strong>
+                <small>Compare scores, skills, and gaps.</small>
+              </div>
+              <app-icon name="arrow-right" [size]="16" />
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="alert alert--info">
+      <app-icon name="info" [size]="18" />
+      <p>
+        <strong>How scoring works:</strong> compatibility scores, skills, and gaps come
+        directly from the FastAPI matching service. The frontend only formats and
+        displays those results. Optional AI explanations never change the score.
+      </p>
+    </div>
+  }
+</div>

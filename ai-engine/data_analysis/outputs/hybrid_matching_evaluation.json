@@ -1,0 +1,478 @@
+{
+  "generated_at": "2026-11-14T13:44:24.496772+00:00",
+  "dataset": "synthetic_curated_development_set",
+  "default_metrics": {
+    "sample_count": 20,
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "weighted_f1": 1.0,
+    "labels": [
+      "strong_match",
+      "moderate_match",
+      "weak_match"
+    ],
+    "per_class": {
+      "strong_match": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 8.0
+      },
+      "moderate_match": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      },
+      "weak_match": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "strong_match",
+        "moderate_match",
+        "weak_match"
+      ],
+      "values": [
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          0
+        ],
+        [
+          0,
+          0,
+          6
+        ]
+      ]
+    },
+    "mean_score_by_actual_label": {
+      "strong_match": 0.920159,
+      "moderate_match": 0.508078,
+      "weak_match": 0.038737
+    },
+    "predictions": [
+      {
+        "case_id": "case_001",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.903081,
+        "matched_skills": [
+          "JavaScript",
+          "Node.js",
+          "PostgreSQL",
+          "Python",
+          "React",
+          "Docker",
+          "Kubernetes"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "Candidate demonstrates all required and preferred canonical skills plus relevant delivery experience."
+      },
+      {
+        "case_id": "case_002",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.920733,
+        "matched_skills": [
+          "pandas",
+          "Python",
+          "Scikit-learn",
+          "TensorFlow",
+          "Docker",
+          "PyTorch"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "All required skills are explicit and the preferred skills are also evidenced."
+      },
+      {
+        "case_id": "case_003",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.922494,
+        "matched_skills": [
+          "Docker",
+          "Linux",
+          "Python",
+          "Git",
+          "Kubernetes"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "Required security tooling and preferred container skills are all present with relevant context."
+      },
+      {
+        "case_id": "case_004",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.887385,
+        "matched_skills": [
+          "Docker",
+          "Linux",
+          "Python",
+          "Git",
+          "Kubernetes"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "The résumé explicitly covers every required and preferred skill and provides matching experience."
+      },
+      {
+        "case_id": "case_005",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.949452,
+        "matched_skills": [
+          "Microsoft Excel",
+          "PostgreSQL",
+          "Python",
+          "Tableau",
+          "Microsoft SQL Server"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "All required analytics tools are present and the preferred database tool is also present."
+      },
+      {
+        "case_id": "case_006",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.938329,
+        "matched_skills": [
+          "Adobe Photoshop",
+          "Figma",
+          "Git",
+          "JavaScript",
+          "React"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "Required design tools and all preferred technical skills are documented."
+      },
+      {
+        "case_id": "case_007",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.92413,
+        "matched_skills": [
+          "JavaScript",
+          "Node.js",
+          "Python",
+          "React",
+          "Docker",
+          "Git",
+          "PostgreSQL"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "Core stack and all preferred supporting tools are explicitly listed with relevant experience."
+      },
+      {
+        "case_id": "case_008",
+        "actual_label": "strong_match",
+        "predicted_label": "strong_match",
+        "score": 0.915667,
+        "matched_skills": [
+          "pandas",
+          "Python",
+          "PyTorch",
+          "Scikit-learn",
+          "Docker",
+          "TensorFlow"
+        ],
+        "missing_required_skills": [],
+        "review_rationale": "Required machine learning stack and preferred deployment tools are all evidenced."
+      },
+      {
+        "case_id": "case_009",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.529973,
+        "matched_skills": [
+          "JavaScript",
+          "Python",
+          "React"
+        ],
+        "missing_required_skills": [
+          "Docker",
+          "PostgreSQL"
+        ],
+        "review_rationale": "Three of five required skills are present, but PostgreSQL and Docker are absent."
+      },
+      {
+        "case_id": "case_010",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.558797,
+        "matched_skills": [
+          "pandas",
+          "Python",
+          "Scikit-learn"
+        ],
+        "missing_required_skills": [
+          "PyTorch",
+          "TensorFlow"
+        ],
+        "review_rationale": "Core data skills are present, but both deep learning frameworks are missing."
+      },
+      {
+        "case_id": "case_011",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.420173,
+        "matched_skills": [
+          "Linux",
+          "Python"
+        ],
+        "missing_required_skills": [
+          "Docker",
+          "Kubernetes"
+        ],
+        "review_rationale": "Two of four required skills are present; container tooling is missing."
+      },
+      {
+        "case_id": "case_012",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.508653,
+        "matched_skills": [
+          "Docker",
+          "Linux",
+          "Python"
+        ],
+        "missing_required_skills": [
+          "Git",
+          "Kubernetes"
+        ],
+        "review_rationale": "Three of five required skills are present; Kubernetes and Git are missing."
+      },
+      {
+        "case_id": "case_013",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.487164,
+        "matched_skills": [
+          "Adobe Photoshop",
+          "Figma"
+        ],
+        "missing_required_skills": [
+          "Git",
+          "React"
+        ],
+        "review_rationale": "Both required design tools are present, but React and Git are missing."
+      },
+      {
+        "case_id": "case_014",
+        "actual_label": "moderate_match",
+        "predicted_label": "moderate_match",
+        "score": 0.54371,
+        "matched_skills": [
+          "Microsoft Excel",
+          "PostgreSQL",
+          "Python"
+        ],
+        "missing_required_skills": [
+          "Microsoft SQL Server",
+          "Tableau"
+        ],
+        "review_rationale": "Core reporting skills are present, but Microsoft SQL Server and Tableau are missing."
+      },
+      {
+        "case_id": "case_015",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.001552,
+        "matched_skills": [],
+        "missing_required_skills": [
+          "Docker",
+          "Kubernetes",
+          "PostgreSQL",
+          "Python",
+          "React"
+        ],
+        "review_rationale": "The résumé is from a non-technical role and lacks all required engineering skills."
+      },
+      {
+        "case_id": "case_016",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.002067,
+        "matched_skills": [],
+        "missing_required_skills": [
+          "pandas",
+          "Python",
+          "PyTorch",
+          "TensorFlow"
+        ],
+        "review_rationale": "The profile has design skills but none of the required machine learning skills."
+      },
+      {
+        "case_id": "case_017",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.002371,
+        "matched_skills": [],
+        "missing_required_skills": [
+          "Docker",
+          "Git",
+          "Kubernetes",
+          "Linux",
+          "Python"
+        ],
+        "review_rationale": "The candidate has no required security or infrastructure skills."
+      },
+      {
+        "case_id": "case_018",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.001181,
+        "matched_skills": [],
+        "missing_required_skills": [
+          "Docker",
+          "Kubernetes",
+          "Linux",
+          "Python"
+        ],
+        "review_rationale": "The résumé contains no relevant network engineering skills."
+      },
+      {
+        "case_id": "case_019",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.001869,
+        "matched_skills": [],
+        "missing_required_skills": [
+          "Adobe Photoshop",
+          "Figma",
+          "Git",
+          "JavaScript",
+          "React"
+        ],
+        "review_rationale": "The finance profile does not contain the required design or frontend skills."
+      },
+      {
+        "case_id": "case_020",
+        "actual_label": "weak_match",
+        "predicted_label": "weak_match",
+        "score": 0.22338,
+        "matched_skills": [
+          "Microsoft Excel"
+        ],
+        "missing_required_skills": [
+          "PostgreSQL",
+          "Python",
+          "Tableau"
+        ],
+        "review_rationale": "Only one required tool is present; the profile lacks the programming and analytics stack."
+      }
+    ]
+  },
+  "config_comparison": [
+    {
+      "config_name": "default",
+      "macro_f1": 1.0,
+      "accuracy": 1.0,
+      "weighted_f1": 1.0,
+      "weights": {
+        "required_skill_coverage": 0.45,
+        "preferred_skill_coverage": 0.15,
+        "skill_overlap": 0.15,
+        "semantic_similarity": 0.25,
+        "category_compatibility": 0.0
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.4
+      }
+    },
+    {
+      "config_name": "moderate_threshold_0_35",
+      "macro_f1": 1.0,
+      "accuracy": 1.0,
+      "weighted_f1": 1.0,
+      "weights": {
+        "required_skill_coverage": 0.45,
+        "preferred_skill_coverage": 0.15,
+        "skill_overlap": 0.15,
+        "semantic_similarity": 0.25,
+        "category_compatibility": 0.0
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.35
+      }
+    },
+    {
+      "config_name": "skill_heavy",
+      "macro_f1": 1.0,
+      "accuracy": 1.0,
+      "weighted_f1": 1.0,
+      "weights": {
+        "required_skill_coverage": 0.55,
+        "preferred_skill_coverage": 0.15,
+        "skill_overlap": 0.15,
+        "semantic_similarity": 0.15,
+        "category_compatibility": 0.0
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.4
+      }
+    },
+    {
+      "config_name": "balanced",
+      "macro_f1": 1.0,
+      "accuracy": 1.0,
+      "weighted_f1": 1.0,
+      "weights": {
+        "required_skill_coverage": 0.3,
+        "preferred_skill_coverage": 0.15,
+        "skill_overlap": 0.15,
+        "semantic_similarity": 0.2,
+        "category_compatibility": 0.2
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.4
+      }
+    },
+    {
+      "config_name": "moderate_threshold_0_45",
+      "macro_f1": 0.944056,
+      "accuracy": 0.95,
+      "weighted_f1": 0.94965,
+      "weights": {
+        "required_skill_coverage": 0.45,
+        "preferred_skill_coverage": 0.15,
+        "skill_overlap": 0.15,
+        "semantic_similarity": 0.25,
+        "category_compatibility": 0.0
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.45
+      }
+    },
+    {
+      "config_name": "semantic_heavy",
+      "macro_f1": 0.944056,
+      "accuracy": 0.95,
+      "weighted_f1": 0.94965,
+      "weights": {
+        "required_skill_coverage": 0.35,
+        "preferred_skill_coverage": 0.1,
+        "skill_overlap": 0.1,
+        "semantic_similarity": 0.45,
+        "category_compatibility": 0.0
+      },
+      "thresholds": {
+        "strong": 0.75,
+        "moderate": 0.4
+      }
+    }
+  ]
+}

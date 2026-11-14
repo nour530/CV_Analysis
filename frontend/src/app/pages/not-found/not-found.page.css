@@ -1,0 +1,29 @@
+.not-found {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  max-width: 34rem;
+  margin: 8vh auto 0;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.not-found__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.2rem;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.not-found h1 {
+  font-size: 1.8rem;
+}
+
+.not-found p {
+  margin-bottom: 0.7rem;
+  line-height: 1.6;
+}

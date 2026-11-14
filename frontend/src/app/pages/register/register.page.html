@@ -1,0 +1,112 @@
+<main class="auth-page">
+  <section class="auth-shell" aria-labelledby="register-title">
+    <a class="auth-brand" routerLink="/login" aria-label="JobMatch AI">
+      <span class="auth-brand__mark" aria-hidden="true">JM</span>
+      <span>
+        <strong>JobMatch AI</strong>
+        <small>Career intelligence</small>
+      </span>
+    </a>
+
+    <div class="auth-card">
+      <p class="eyebrow">Create account</p>
+      <h1 id="register-title">Start your private workspace</h1>
+      <p class="auth-copy">
+        Save CV analyses, matching history, and preferences to your own account.
+      </p>
+
+      @if (error(); as apiError) {
+        <div class="alert alert--error" role="alert">
+          <app-icon name="alert" [size]="18" />
+          <p>{{ apiError.message }}</p>
+        </div>
+      }
+
+      <form class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="register-name">Full name</label>
+          <input
+            id="register-name"
+            class="input"
+            type="text"
+            formControlName="fullName"
+            autocomplete="name"
+            maxlength="160"
+          />
+          @if (form.controls.fullName.touched && form.controls.fullName.invalid) {
+            <span class="field-error">Enter your full name.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="register-email">Email address</label>
+          <input
+            id="register-email"
+            class="input"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+          />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <span class="field-error">Enter a valid email address.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="register-password">Password</label>
+          <input
+            id="register-password"
+            class="input"
+            type="password"
+            formControlName="password"
+            autocomplete="new-password"
+          />
+          <span class="hint">
+            Use 12–128 characters with at least three of: lowercase, uppercase,
+            numbers, and symbols.
+          </span>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <span class="field-error">Use at least 12 characters.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="register-confirm">Confirm password</label>
+          <input
+            id="register-confirm"
+            class="input"
+            type="password"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+          />
+          @if (
+            form.controls.confirmPassword.touched &&
+            (form.hasError('passwordsMismatch') ||
+              form.controls.confirmPassword.invalid)
+          ) {
+            <span class="field-error">Passwords do not match.</span>
+          }
+        </div>
+
+        <button type="submit" class="btn btn--primary auth-submit" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            Creating account…
+          } @else {
+            Create account
+          }
+        </button>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account?
+        <a routerLink="/login">Sign in</a>
+      </p>
+    </div>
+
+    <p class="auth-footnote">
+      Passwords are hashed with Argon2id. JobMatch AI never stores your original CV file.
+    </p>
+  </section>
+</main>

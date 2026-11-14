@@ -7,6 +7,7 @@ __pycache__/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Python testing
 .pytest_cache/
@@ -38,3 +39,10 @@ Thumbs.db
 # Uploaded CVs and private data
 uploads/
 data/private
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Regenerable from data/raw via data_analysis/02_data_cleaning.py
+ai-engine/data/processed/

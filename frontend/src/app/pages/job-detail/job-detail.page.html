@@ -1,0 +1,145 @@
+<div class="page">
+  <a class="link job-back" routerLink="/jobs">
+    <app-icon name="chevron-left" [size]="16" />
+    Back to Job Explorer
+  </a>
+
+  <app-page-header
+    [eyebrow]="detail()?.job?.category || 'Job details'"
+    [title]="detail()?.job?.title || 'Job details'"
+    description="Review the role requirements and inspect how your CV fits before running a match."
+  >
+    @if (detail(); as loaded) {
+      <a
+        class="btn btn--primary"
+        routerLink="/matches"
+        [queryParams]="{ jobId: loaded.job.job_id }"
+      >
+        <app-icon name="matches" [size]="17" />
+        Match this job
+      </a>
+    }
+  </app-page-header>
+
+  @if (error(); as apiError) {
+    <app-state-panel
+      variant="error"
+      [title]="apiError.status === 404 ? 'This role was not found' : 'Job details could not load'"
+      [message]="apiError.message"
+      actionLabel="Try again"
+      (action)="retry()"
+    />
+  } @else if (loading()) {
+    <app-state-panel
+      variant="loading"
+      title="Loading role details"
+      message="Fetching the full description, responsibilities, and qualifications."
+    />
+  } @else if (detail(); as loaded) {
+    <div class="job-detail-layout">
+      <div class="stack">
+        <section class="card card--padded">
+          <h2 class="card__title">Role overview</h2>
+          <p class="job-description">{{ loaded.description }}</p>
+        </section>
+
+        @if (loaded.responsibilities.length) {
+          <section class="card card--padded">
+            <h2 class="card__title">Responsibilities</h2>
+            <ul class="detail-list">
+              @for (item of loaded.responsibilities; track $index) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (loaded.qualifications.length) {
+          <section class="card card--padded">
+            <h2 class="card__title">Qualifications</h2>
+            <ul class="detail-list">
+              @for (item of loaded.qualifications; track $index) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (loaded.other_skills.length) {
+          <section class="card card--padded">
+            <h2 class="card__title">Other skills mentioned</h2>
+            <div class="chip-list">
+              @for (skill of loaded.other_skills; track skill) {
+                <span class="tag">{{ skill }}</span>
+              }
+            </div>
+          </section>
+        }
+      </div>
+
+      <aside class="stack">
+        <section class="card card--padded">
+          <h2 class="card__title">At a glance</h2>
+          <dl class="meta-list">
+            <div>
+              <dt>Category</dt>
+              <dd>{{ loaded.job.category || 'Uncategorised' }}</dd>
+            </div>
+            <div>
+              <dt>Job ID</dt>
+              <dd>{{ loaded.job.job_id }}</dd>
+            </div>
+            <div>
+              <dt>Required skills</dt>
+              <dd>{{ loaded.job.required_skills.length }}</dd>
+            </div>
+            <div>
+              <dt>Preferred skills</dt>
+              <dd>{{ loaded.job.preferred_skills.length }}</dd>
+            </div>
+          </dl>
+          <a
+            class="btn btn--primary btn--sm detail-cta"
+            routerLink="/matches"
+            [queryParams]="{ jobId: loaded.job.job_id }"
+          >
+            <app-icon name="sparkle" [size]="15" />
+            Run a match
+          </a>
+        </section>
+
+        <section class="card card--padded">
+          <h2 class="card__title">Required skills</h2>
+          @if (loaded.job.required_skills.length) {
+            <div class="chip-list">
+              @for (skill of loaded.job.required_skills; track skill) {
+                <span class="tag tag--accent">{{ skill }}</span>
+              }
+            </div>
+          } @else {
+            <p class="muted small">No required skills were listed for this role.</p>
+          }
+        </section>
+
+        @if (loaded.job.preferred_skills.length) {
+          <section class="card card--padded">
+            <h2 class="card__title">Preferred skills</h2>
+            <div class="chip-list">
+              @for (skill of loaded.job.preferred_skills; track skill) {
+                <span class="tag">{{ skill }}</span>
+              }
+            </div>
+          </section>
+        }
+
+        <div class="alert alert--info">
+          <app-icon name="info" [size]="18" />
+          <p>
+            This catalog does not include a company field, so no company is shown.
+            Scores are produced by the backend matching service.
+          </p>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

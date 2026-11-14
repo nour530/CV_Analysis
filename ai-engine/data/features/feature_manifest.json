@@ -1,0 +1,522 @@
+{
+  "phase": "2.4",
+  "phase_name": "Feature Engineering",
+  "feature_version": "2.4.0",
+  "generated_at": "2026-11-08T18:20:57+01:00",
+  "script": "ai-engine/data_analysis/03_feature_engineering.py",
+  "environment": {
+    "python": "3.12.8",
+    "pandas": "3.1.1",
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1",
+    "spacy": "not_installed"
+  },
+  "inputs": {
+    "raw/Resume.csv": {
+      "path": "ai-engine/data/raw/resumes/Resume.csv",
+      "size_human": "53.73 MB",
+      "sha256": "d44a8f69a51b1240f94fb671ce1fd3d3a7acf01661497ef386261e3897059fef"
+    },
+    "raw/job_roles_combined_ready_10461.csv": {
+      "path": "ai-engine/data/raw/job_descriptions/job_roles_combined_ready_10461.csv",
+      "size_human": "19.45 MB",
+      "sha256": "2171dae4f298c86dd3f73993d79dadbcb15e0de6f59dafdcaaa0fb89f1dca71c"
+    },
+    "raw/software_skills_15.csv": {
+      "path": "ai-engine/data/raw/job_descriptions/software_skills_15.csv",
+      "size_human": "666.09 KB",
+      "sha256": "d77e682526b78aa6cf2faddb31857556c7f487d987f5673414b85e930d2facc4"
+    },
+    "processed/resumes_cleaned.csv": {
+      "path": "ai-engine/data/processed/resumes_cleaned.csv",
+      "size_human": "67.90 MB",
+      "sha256": "1a269aeb76bea71bbf626c4caf0eae99f1d85e4bd256cb9c77bd207eeea243ce"
+    },
+    "processed/job_roles_cleaned.csv": {
+      "path": "ai-engine/data/processed/job_roles_cleaned.csv",
+      "size_human": "39.33 MB",
+      "sha256": "6a75dd5b829d02eb566000cc9c8363132315542c6818d53decad32aa4b877f65"
+    },
+    "processed/software_skills_cleaned.csv": {
+      "path": "ai-engine/data/processed/software_skills_cleaned.csv",
+      "size_human": "1.33 MB",
+      "sha256": "19f92d6e5bf5dcd955a019e24cc0053cb2382d219e9ff50d7384964fd2a9c69e"
+    }
+  },
+  "outputs": {
+    "resume_features.csv": {
+      "path": "ai-engine/data/features/resume_features.csv",
+      "size_bytes": 25852402,
+      "size_human": "24.65 MB",
+      "sha256": "42229a827ba2f00e07c9c5ae4a7905e74e55348fbfbf8f3ad6dae3c870e150eb"
+    },
+    "job_features.csv": {
+      "path": "ai-engine/data/features/job_features.csv",
+      "size_bytes": 40419175,
+      "size_human": "38.55 MB",
+      "sha256": "b31d3d08f3fc5fffbf26a2a8bc603c3f3cf36a03a0dd2309e283915452a8a94d"
+    },
+    "skills_dictionary.csv": {
+      "path": "ai-engine/data/features/skills_dictionary.csv",
+      "size_bytes": 602209,
+      "size_human": "588.09 KB",
+      "sha256": "b0758d115e916ec0bba3ea6ae6506791f17face70678536026aef585d21d36a1"
+    },
+    "skill_aliases.csv": {
+      "path": "ai-engine/data/features/skill_aliases.csv",
+      "size_bytes": 429262,
+      "size_human": "419.20 KB",
+      "sha256": "96e58ec4e3cff4e786fb57855e31dcb509c1d5e3f17699337c2efd3698700fc0"
+    },
+    "skill_occupation_map.csv": {
+      "path": "ai-engine/data/features/skill_occupation_map.csv",
+      "size_bytes": 1537509,
+      "size_human": "1.47 MB",
+      "sha256": "45e53e2fd9c0d1c0f8bad0943df8a0f3ab19aa001e5ce4408933d30679391981"
+    },
+    "resume_skill_matches.csv": {
+      "path": "ai-engine/data/features/resume_skill_matches.csv",
+      "size_bytes": 1173597,
+      "size_human": "1.12 MB",
+      "sha256": "1c3554b50efbcb0b9f2793b7fbc47a52a7b975fe4ba87f3c3c77f7f675ca80eb"
+    },
+    "job_skill_matches.csv": {
+      "path": "ai-engine/data/features/job_skill_matches.csv",
+      "size_bytes": 11014605,
+      "size_human": "10.50 MB",
+      "sha256": "14d764ab02c3ae95038c13b07e54e301ab6adeac0d0b793a73afb0b17c047f1e"
+    },
+    "resume_sections.csv": {
+      "path": "ai-engine/data/features/resume_sections.csv",
+      "size_bytes": 15594235,
+      "size_human": "14.87 MB",
+      "sha256": "f924925474b38c479ccaeb633bc9aef53c75d4728da6f68d925b725ae05c8784"
+    },
+    "job_sections.csv": {
+      "path": "ai-engine/data/features/job_sections.csv",
+      "size_bytes": 21905344,
+      "size_human": "20.89 MB",
+      "sha256": "07b2943df334b5f24404f453c7cec27f1f9bfb87513d08a202a13c9f147c03ff"
+    },
+    "job_keywords.csv": {
+      "path": "ai-engine/data/features/job_keywords.csv",
+      "size_bytes": 5575909,
+      "size_human": "5.32 MB",
+      "sha256": "1cf736bef985b71d009936bff03397105f30645cae32e9ea23720d973bf63513"
+    }
+  },
+  "representations": {
+    "resume_semantic_text_column": "clean_text",
+    "job_semantic_text_column": "clean_description",
+    "resume_sparse_features": "technical_skills and category-specific skill columns",
+    "job_sparse_features": "required_skills, preferred_skills, other_skills",
+    "skill_match_tables": [
+      "resume_skill_matches.csv",
+      "job_skill_matches.csv"
+    ],
+    "hybrid_matching": "Concatenate clean text with canonical skills at runtime.",
+    "embeddings_generated": false,
+    "external_api_calls": false
+  },
+  "settings": {
+    "keyword_top_n": 10,
+    "keyword_method": "scikit-learn_tfidf",
+    "short_alias_context_required": [
+      "c",
+      "go",
+      "j",
+      "r"
+    ],
+    "allow_weak_degree_mentions_only_in_education_section": true
+  },
+  "statistics": {
+    "dictionary": {
+      "canonical_skills": 1541,
+      "aliases": 2829,
+      "ambiguous_aliases": 0,
+      "match_enabled_aliases": 2829,
+      "occupations": 36,
+      "occupation_titles": 36,
+      "skill_occupation_relationships": 6217,
+      "category_counts": {
+        "tool_technology": 1177,
+        "database": 172,
+        "framework_library": 100,
+        "programming_language": 92
+      },
+      "alias_type_counts": {
+        "canonical_surface": 1541,
+        "compact_punctuation": 1280,
+        "expanded_parenthetical": 4,
+        "parenthetical_acronym": 4
+      },
+      "hot_technology_skills": 165,
+      "in_demand_skills": 156
+    },
+    "resumes": {
+      "rows": 2483,
+      "features": 29,
+      "rows_with_skills": 1262,
+      "skill_coverage_percent": 50.82561417639951,
+      "total_skill_mentions": 2981,
+      "mean_skills_per_resume": 1.2005638340716875,
+      "max_skills_per_resume": 21,
+      "rows_with_programming_languages": 434,
+      "rows_with_frameworks_libraries": 63,
+      "rows_with_databases": 158,
+      "rows_with_tools_technologies": 1056,
+      "education_coverage_percent": 99.5569875151027,
+      "experience_coverage_percent": 100.0,
+      "education_source_counts": {
+        "explicit_section": 2321,
+        "keyword_scan": 87,
+        "explicit_section_no_detail": 64,
+        "none": 11
+      },
+      "experience_source_counts": {
+        "explicit_section": 2478,
+        "none": 5
+      },
+      "section_counts": {
+        "skills": 3600,
+        "experience": 3528,
+        "education": 3369,
+        "preamble": 2470,
+        "summary": 2053,
+        "accomplishments": 1114,
+        "highlights": 1102,
+        "certifications": 382,
+        "qualifications": 364,
+        "languages": 323,
+        "projects": 181,
+        "employment": 82
+      },
+      "top_skills": {
+        "Microsoft Word": 242,
+        "C": 163,
+        "Microsoft Excel": 158,
+        "Chef": 127,
+        "Facebook": 112,
+        "Linux": 86,
+        "Adobe Photoshop": 71,
+        "R": 70,
+        "Microsoft Outlook": 65,
+        "C++": 64,
+        "UNIX": 61,
+        "LinkedIn": 59,
+        "JavaScript": 56,
+        "Route": 55,
+        "Google Analytics": 52,
+        "Microsoft Access": 49,
+        "Microsoft PowerPoint": 49,
+        "Microsoft Project": 48,
+        "Microsoft Windows": 46,
+        "PHP": 44
+      }
+    },
+    "jobs": {
+      "rows": 10461,
+      "features": 25,
+      "titles_identified": 4063,
+      "title_identification_percent": 38.83949909186502,
+      "title_source_counts": {
+        "not_identified": 6398,
+        "cue_phrase": 2309,
+        "leading_text": 1060,
+        "explicit_field": 694
+      },
+      "rows_with_required_skills": 7038,
+      "rows_with_preferred_skills": 1525,
+      "rows_with_other_skills": 1404,
+      "rows_with_any_skills": 8029,
+      "skill_coverage_percent": 76.75174457508842,
+      "responsibilities_coverage_percent": 88.06997418984801,
+      "qualifications_coverage_percent": 93.09817417072938,
+      "requirement_type_counts": {
+        "required": 20758,
+        "preferred": 2772,
+        "mentioned": 2445
+      },
+      "section_counts": {
+        "experience": 8348,
+        "preamble": 5498,
+        "job_description": 4567,
+        "responsibilities": 3202,
+        "skills": 2126,
+        "requirements": 1913,
+        "qualifications": 1732,
+        "full_text": 1314,
+        "required_skills": 1001,
+        "preferred_skills": 706,
+        "education": 676,
+        "description": 526,
+        "about": 479,
+        "summary": 427,
+        "benefits": 387,
+        "duties": 363,
+        "preferred_qualifications": 336,
+        "overview": 234,
+        "minimum_qualifications": 131
+      },
+      "top_skills": {
+        "JavaScript": 2799,
+        "jQuery": 1401,
+        "Linux": 1337,
+        "C#": 1305,
+        "Python": 1191,
+        "Git": 1016,
+        "MySQL": 944,
+        "C": 836,
+        "PHP": 815,
+        "UNIX": 793,
+        "AJAX": 728,
+        "C++": 697,
+        "Bootstrap": 528,
+        "Node.js": 501,
+        "NoSQL": 498,
+        "React": 456,
+        "Perl": 376,
+        "Swift": 341,
+        "JUnit": 324,
+        "MongoDB": 322
+      },
+      "top_required_skills": {
+        "JavaScript": 2358,
+        "jQuery": 1151,
+        "C#": 1080,
+        "Linux": 1074,
+        "Python": 938,
+        "Git": 798,
+        "MySQL": 796,
+        "C": 702,
+        "PHP": 685,
+        "UNIX": 639,
+        "AJAX": 603,
+        "C++": 581,
+        "Bootstrap": 423,
+        "Node.js": 393,
+        "NoSQL": 360,
+        "React": 351,
+        "Perl": 303,
+        "Swift": 299,
+        "JUnit": 255,
+        "MongoDB": 255
+      },
+      "keyword_rows": 104598,
+      "rows_with_keywords": 10461
+    }
+  },
+  "validation": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "Raw file unchanged: Resume.csv",
+        "passed": true,
+        "detail": "SHA-256 before=d44a8f69a51b1240..., after=d44a8f69a51b1240..."
+      },
+      {
+        "check": "Raw file unchanged: job_roles_combined_ready_10461.csv",
+        "passed": true,
+        "detail": "SHA-256 before=2171dae4f298c86d..., after=2171dae4f298c86d..."
+      },
+      {
+        "check": "Raw file unchanged: software_skills_15.csv",
+        "passed": true,
+        "detail": "SHA-256 before=d77e682526b78aa6..., after=d77e682526b78aa6..."
+      },
+      {
+        "check": "Processed file unchanged: resumes_cleaned.csv",
+        "passed": true,
+        "detail": "SHA-256 before=1a269aeb76bea71b..., after=1a269aeb76bea71b..."
+      },
+      {
+        "check": "Processed file unchanged: job_roles_cleaned.csv",
+        "passed": true,
+        "detail": "SHA-256 before=6a75dd5b829d02eb..., after=6a75dd5b829d02eb..."
+      },
+      {
+        "check": "Processed file unchanged: software_skills_cleaned.csv",
+        "passed": true,
+        "detail": "SHA-256 before=19f92d6e5bf5dcd9..., after=19f92d6e5bf5dcd9..."
+      },
+      {
+        "check": "Résumé feature IDs exactly cover processed résumé IDs",
+        "passed": true,
+        "detail": "processed=2483, features=2483, missing=0, extra=0"
+      },
+      {
+        "check": "Résumé feature IDs are unique",
+        "passed": true,
+        "detail": "rows=2483, unique=2483"
+      },
+      {
+        "check": "Résumé feature count equals processed count",
+        "passed": true,
+        "detail": "processed=2483, features=2483"
+      },
+      {
+        "check": "Résumé clean text is present",
+        "passed": true,
+        "detail": "empty=0"
+      },
+      {
+        "check": "Job source row indices are preserved in order",
+        "passed": true,
+        "detail": "processed=10461, features=10461"
+      },
+      {
+        "check": "Job feature IDs are unique",
+        "passed": true,
+        "detail": "rows=10461, unique=10461"
+      },
+      {
+        "check": "Job feature count equals processed count",
+        "passed": true,
+        "detail": "processed=10461, features=10461"
+      },
+      {
+        "check": "Job clean descriptions are present",
+        "passed": true,
+        "detail": "empty=0"
+      },
+      {
+        "check": "Skills occupation map covers every processed skill row",
+        "passed": true,
+        "detail": "processed=6217, mapped=6217"
+      },
+      {
+        "check": "Canonical skill IDs are unique",
+        "passed": true,
+        "detail": "rows=1541, unique=1541"
+      },
+      {
+        "check": "Skill categories use the documented values",
+        "passed": true,
+        "detail": "categories=['database', 'framework_library', 'programming_language', 'tool_technology']"
+      },
+      {
+        "check": "Ambiguous aliases are excluded from matching",
+        "passed": true,
+        "detail": "ambiguous=0, ambiguous_enabled=0"
+      },
+      {
+        "check": "Every résumé skill match exists in the skills dictionary",
+        "passed": true,
+        "detail": "matched=249, unknown=0"
+      },
+      {
+        "check": "Every job skill match exists in the skills dictionary",
+        "passed": true,
+        "detail": "matched=363, unknown=0"
+      },
+      {
+        "check": "Requirement types use documented values",
+        "passed": true,
+        "detail": "types=['mentioned', 'preferred', 'required']"
+      },
+      {
+        "check": "Alias normalization matches a compact punctuation alias",
+        "passed": true,
+        "detail": "alias=24sevenofficeproject, canonical=24SevenOffice Project"
+      },
+      {
+        "check": "Alias normalization matches a parenthetical acronym",
+        "passed": true,
+        "detail": "alias=AEM, canonical=Adobe Experience Manager (AEM)"
+      },
+      {
+        "check": "Alias normalization is case-insensitive",
+        "passed": true,
+        "detail": "alias=24SevenOffice Project, canonical=24SevenOffice Project"
+      },
+      {
+        "check": "Résumé section offsets are valid",
+        "passed": true,
+        "detail": "invalid=0, sections=18568"
+      },
+      {
+        "check": "Job section offsets are valid",
+        "passed": true,
+        "detail": "invalid=0, sections=33966"
+      },
+      {
+        "check": "Every résumé has at least one extracted section",
+        "passed": true,
+        "detail": "covered=2483, processed=2483"
+      },
+      {
+        "check": "Every job has at least one extracted section",
+        "passed": true,
+        "detail": "covered=10461, processed=10461"
+      },
+      {
+        "check": "Job keywords are traceable to job rows",
+        "passed": true,
+        "detail": "keyword_ranges=10461, jobs=10461"
+      },
+      {
+        "check": "Output file exists: resume_features.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/resume_features.csv, size=24.65 MB"
+      },
+      {
+        "check": "Output file exists: job_features.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/job_features.csv, size=38.55 MB"
+      },
+      {
+        "check": "Output file exists: skills_dictionary.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/skills_dictionary.csv, size=588.09 KB"
+      },
+      {
+        "check": "Output file exists: skill_aliases.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/skill_aliases.csv, size=419.20 KB"
+      },
+      {
+        "check": "Output file exists: skill_occupation_map.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/skill_occupation_map.csv, size=1.47 MB"
+      },
+      {
+        "check": "Output file exists: resume_skill_matches.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/resume_skill_matches.csv, size=1.12 MB"
+      },
+      {
+        "check": "Output file exists: job_skill_matches.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/job_skill_matches.csv, size=10.50 MB"
+      },
+      {
+        "check": "Output file exists: resume_sections.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/resume_sections.csv, size=14.87 MB"
+      },
+      {
+        "check": "Output file exists: job_sections.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/job_sections.csv, size=20.89 MB"
+      },
+      {
+        "check": "Output file exists: job_keywords.csv",
+        "passed": true,
+        "detail": "path=ai-engine/data/features/job_keywords.csv, size=5.32 MB"
+      },
+      {
+        "check": "Alias normalization tests passed",
+        "passed": true,
+        "detail": "tests=3, failed=0"
+      }
+    ]
+  },
+  "known_limitations": [
+    "No embeddings were generated and no external LLM/API was called.",
+    "Skills are matched against canonical dictionary names and deterministic aliases only.",
+    "Vendor-qualified dictionary names can reduce recall for shorter common names.",
+    "Skill category assignment is a documented heuristic, not an O*NET claim.",
+    "Job-title, section, requirement, education, and experience extraction are rule-based.",
+    "TF-IDF keywords are lexical and carry no semantic understanding."
+  ]
+}
