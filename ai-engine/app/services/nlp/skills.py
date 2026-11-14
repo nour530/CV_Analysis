@@ -14,12 +14,21 @@ from app.schemas.resume_analysis import SkillCategory
 DEFAULT_FEATURES_DIR = Path(__file__).resolve().parents[3] / "data" / "features"
 DEFAULT_DICTIONARY_PATH = DEFAULT_FEATURES_DIR / "skills_dictionary.csv"
 DEFAULT_ALIASES_PATH = DEFAULT_FEATURES_DIR / "skill_aliases.csv"
+# Hand-curated cross-industry skills with English and French aliases. The O*NET
+# dictionary only covers IT software tools, and misses common skills such as
+# Java, AWS, Agile, accounting, quality management or languages.
+DEFAULT_SUPPLEMENT_PATH = DEFAULT_FEATURES_DIR / "skills_supplement.csv"
 
 SHORT_CONTEXT_ALIASES = frozenset({"c", "r", "j", "go"})
+# Dictionary aliases that are also everyday words (often French). They only
+# count when the surrounding text is clearly about software tooling.
+STRICT_CONTEXT_ALIASES = frozenset({"chef", "rapide", "route"})
 MAX_EVIDENCE_PER_SKILL = 5
 MAX_ALIAS_CHUNK = 300
-ALIAS_BOUNDARY_LEFT = r"(?<![A-Za-z0-9+#])"
-ALIAS_BOUNDARY_RIGHT = r"(?![A-Za-z0-9+#])"
+# "&" is a boundary so "R&D" never matches the R language; accented letters are
+# word characters so French words are not split.
+ALIAS_BOUNDARY_LEFT = r"(?<![A-Za-z0-9+#&\u00C0-\u024F])"
+ALIAS_BOUNDARY_RIGHT = r"(?![A-Za-z0-9+#&\u00C0-\u024F])"
 SKILL_KEY_PATTERN = re.compile(r"[^a-z0-9+#]+")
 
 PROGRAMMING_CONTEXT_PATTERN = re.compile(
@@ -28,15 +37,31 @@ PROGRAMMING_CONTEXT_PATTERN = re.compile(
     r"library|stack|engineer|architect)\b",
     re.IGNORECASE,
 )
+GENERAL_CONTEXT_PATTERN = re.compile(
+    r"(?i)(?:\b(?:skills?|experience[ds]?|knowledge|proficien(?:t|cy)|fluent(?:ly)?|fluency|speaks?|spoken|"
+    r"bilingual|bilingue|native|parlée?s?|écrite?s?|"
+    r"languages?|required|requirements?|profile|qualifications?|background|"
+    r"expertise|competenc(?:e|ies|y)|ability|strong|good|excellent|"
+    r"compétences?|competences?|expériences?|experiences?|connaissances?|maîtrise|"
+    r"maitrise|langues?|courant|requis|exigée?s?|profil|niveau|bonne|solide|"
+    r"formation|diplôme|diplome)\b|:)"
+)
+STRICT_TECH_CONTEXT_PATTERN = re.compile(
+    r"(?i)\b(?:puppet|ansible|terraform|saltstack|configuration\s+management|devops|"
+    r"cookbooks?|infrastructure\s+as\s+code|kubernetes|docker|linux)\b"
+)
 PREFERRED_CUE_PATTERN = re.compile(
     r"(?i)\b(?:preferred|nice\s+to\s+have|desired|a\s+plus|plus|bonus|advantage|"
-    r"ideally|preferred\s+qualifications?|preferred\s+skills?)\b"
+    r"ideally|preferred\s+qualifications?|preferred\s+skills?|souhaitée?s?|"
+    r"appréciée?s?|un\s+plus|un\s+atout|serait\s+un\s+plus|idéalement)\b"
 )
 REQUIRED_CUE_PATTERN = re.compile(
     r"(?i)\b(?:require(?:s|d)?|must\s+have|must|minimum|mandatory|need(?:ed|s)?|"
     r"qualifications?|proficien(?:t|cy)|strong\s+knowledge|experience\s+with|"
     r"knowledge\s+of|familiar\s+with|hands-on|expertise|ability\s+to|"
-    r"requirements?|required\s+skills?)\b"
+    r"requirements?|required\s+skills?|requise?s?|exigée?s?|obligatoires?|"
+    r"indispensables?|maîtrise|maitrise|expérience\s+(?:en|dans|avec)|"
+    r"connaissances?\s+(?:en|de|du|des)|vous\s+maîtrisez|profil\s+recherché)\b"
 )
 SENTENCE_PATTERN = re.compile(r"[^.!?;\u2022\n]+(?:[.!?;]|$)", re.UNICODE)
 
@@ -52,6 +77,7 @@ class _AliasEntry:
     alias: str
     alias_type: str
     requires_context: bool
+    context: str = "programming"
 
 
 def normalize_text(value: Any) -> str:
@@ -65,8 +91,13 @@ def normalize_text(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def strip_accents(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
 def normalize_skill_key(value: Any) -> str:
-    return SKILL_KEY_PATTERN.sub("", normalize_text(value).casefold())
+    return SKILL_KEY_PATTERN.sub("", strip_accents(normalize_text(value)).casefold())
 
 
 def _read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -89,10 +120,75 @@ def _cell(row: Mapping[str, Any], name: str) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
+_VALID_CATEGORIES = frozenset(
+    {
+        "programming_language",
+        "framework_library",
+        "database",
+        "tool_technology",
+        "soft_skill",
+        "domain_knowledge",
+        "other",
+    }
+)
+
+
+def _merge_supplement(
+    path: Path,
+    canonical_names: dict[str, str],
+    categories: dict[str, SkillCategory],
+    alias_candidates: dict[str, list[_AliasEntry]],
+) -> None:
+    """Add supplementary skills. A supplement alias replaces a conflicting
+    dictionary alias, so curated entries win over O*NET ambiguities."""
+    if not path.exists():
+        return
+    for row in _read_csv_rows(path):
+        canonical = _cell(row, "canonical_skill")
+        if not canonical:
+            continue
+        key = normalize_skill_key(canonical)
+        canonical = canonical_names.get(key, canonical)
+        canonical_names[key] = canonical
+        category = _cell(row, "skill_category") or "other"
+        if category not in _VALID_CATEGORIES:
+            category = "other"
+        categories.setdefault(key, category)  # type: ignore[arg-type]
+        contextual = _cell(row, "requires_context").casefold() in {"true", "1", "yes"}
+        surfaces = [canonical] + [
+            alias.strip() for alias in _cell(row, "aliases").split(";") if alias.strip()
+        ]
+        variants: list[str] = []
+        for surface in surfaces:
+            variants.append(surface)
+            plain = strip_accents(surface)
+            if plain != surface:
+                variants.append(plain)
+        for alias in dict.fromkeys(variants):
+            alias_key = normalize_skill_key(alias)
+            if not alias_key:
+                continue
+            single_word = " " not in alias.strip() and "-" not in alias.strip()
+            entry = _AliasEntry(
+                canonical=canonical,
+                category=categories[key],
+                alias=alias,
+                alias_type="canonical_surface" if alias == canonical else "supplement_alias",
+                requires_context=(contextual and single_word)
+                or alias_key in SHORT_CONTEXT_ALIASES,
+                context="general" if contextual else "programming",
+            )
+            existing = alias_candidates.get(alias_key, [])
+            if any(item.canonical != canonical for item in existing):
+                existing = []
+            alias_candidates[alias_key] = [*existing, entry]
+
+
 @lru_cache(maxsize=8)
 def _load_skill_data(
     dictionary_path: str,
     aliases_path: str | None,
+    supplement_path: str | None = None,
 ) -> tuple[
     dict[str, str],
     dict[str, SkillCategory],
@@ -168,6 +264,25 @@ def _load_skill_data(
                     )
                 )
 
+    for key in list(alias_candidates):
+        if key in STRICT_CONTEXT_ALIASES:
+            alias_candidates[key] = [
+                _AliasEntry(
+                    canonical=entry.canonical,
+                    category=entry.category,
+                    alias=entry.alias,
+                    alias_type=entry.alias_type,
+                    requires_context=True,
+                    context="strict",
+                )
+                for entry in alias_candidates[key]
+            ]
+
+    if supplement_path:
+        _merge_supplement(
+            Path(supplement_path), canonical_names, categories, alias_candidates
+        )
+
     alias_lookup: dict[str, _AliasEntry] = {}
     literals: list[str] = []
     for alias_key, entries in alias_candidates.items():
@@ -197,8 +312,14 @@ class LocalSkillExtractor:
         self,
         dictionary_path: str | Path | None = None,
         aliases_path: str | Path | None = None,
+        supplement_path: str | Path | None = None,
     ) -> None:
         resolved_dictionary = Path(dictionary_path or DEFAULT_DICTIONARY_PATH)
+        resolved_supplement = (
+            Path(supplement_path)
+            if supplement_path is not None
+            else resolved_dictionary.parent / DEFAULT_SUPPLEMENT_PATH.name
+        )
         if aliases_path is not None:
             resolved_aliases = Path(aliases_path)
         else:
@@ -219,6 +340,7 @@ class LocalSkillExtractor:
         ) = _load_skill_data(
             str(resolved_dictionary.resolve()),
             str(resolved_aliases.resolve()) if resolved_aliases.name else None,
+            str(resolved_supplement.resolve()) if resolved_supplement.name else None,
         )
 
         self.patterns: list[re.Pattern[str]] = []
@@ -233,8 +355,17 @@ class LocalSkillExtractor:
             )
             self.patterns.append(re.compile(expression, re.IGNORECASE))
 
-    def _context_ok(self, text: str, start: int, end: int) -> bool:
+    def _context_ok(
+        self, text: str, start: int, end: int, context: str = "programming"
+    ) -> bool:
         window = text[max(0, start - 120) : min(len(text), end + 120)]
+        if context == "strict":
+            return STRICT_TECH_CONTEXT_PATTERN.search(window) is not None
+        if context == "general":
+            return (
+                GENERAL_CONTEXT_PATTERN.search(window) is not None
+                or PROGRAMMING_CONTEXT_PATTERN.search(window) is not None
+            )
         return PROGRAMMING_CONTEXT_PATTERN.search(window) is not None
 
     @staticmethod
@@ -283,7 +414,7 @@ class LocalSkillExtractor:
                 if entry is None:
                     continue
                 if entry.requires_context and not self._context_ok(
-                    normalized, match.start(), match.end()
+                    normalized, match.start(), match.end(), entry.context
                 ):
                     continue
                 raw.append(

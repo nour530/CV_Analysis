@@ -46,3 +46,6 @@ data/private
 
 # Regenerable from data/raw via data_analysis/02_data_cleaning.py
 ai-engine/data/processed/
+
+# Local preview launch config (machine-specific paths)
+.claude/launch.json

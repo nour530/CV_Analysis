@@ -319,12 +319,14 @@ class LocalMatcher:
             item for item in job.requirements if item.importance == "preferred"
         ]
 
-        required_total = sum(
-            self._importance_weight(item.importance, self.config.importance_weights)
-            for item in required_items
-        )
+        def weight(item: Any) -> float:
+            return self._importance_weight(
+                item.importance, self.config.importance_weights
+            ) * self.config.skill_weight(item.category, item.skill)
+
+        required_total = sum(weight(item) for item in required_items)
         required_hit = sum(
-            self._importance_weight(item.importance, self.config.importance_weights)
+            weight(item)
             for item in required_items
             if self._skill_key(item.skill) in resume_by_key
         )
@@ -332,12 +334,9 @@ class LocalMatcher:
             required_hit / required_total if required_total > 0 else None
         )
 
-        preferred_total = sum(
-            self._importance_weight(item.importance, self.config.importance_weights)
-            for item in preferred_items
-        )
+        preferred_total = sum(weight(item) for item in preferred_items)
         preferred_hit = sum(
-            self._importance_weight(item.importance, self.config.importance_weights)
+            weight(item)
             for item in preferred_items
             if self._skill_key(item.skill) in resume_by_key
         )
@@ -345,11 +344,33 @@ class LocalMatcher:
             preferred_hit / preferred_total if preferred_total > 0 else None
         )
 
+        overlap_total = sum(
+            self.config.skill_weight(item.category, item.skill) for item in job_by_key.values()
+        )
         overlap_value = (
-            len(set(job_by_key) & set(resume_by_key)) / len(job_by_key)
-            if job_by_key
+            sum(
+                self.config.skill_weight(item.category, item.skill)
+                for key, item in job_by_key.items()
+                if key in resume_by_key
+            )
+            / overlap_total
+            if overlap_total > 0
             else None
         )
+
+        # A job whose listed skills are all generic (languages, soft skills)
+        # cannot reach full skill coverage: cap each skill component at the
+        # highest category weight among its requirements.
+        specificity = max(
+            (self.config.skill_weight(item.category, item.skill) for item in job.requirements),
+            default=1.0,
+        )
+        if specificity < 1.0:
+            required_value = None if required_value is None else required_value * specificity
+            preferred_value = (
+                None if preferred_value is None else preferred_value * specificity
+            )
+            overlap_value = None if overlap_value is None else overlap_value * specificity
 
         semantic_value: float | None = None
         if resume.semantic_text and job.semantic_text:

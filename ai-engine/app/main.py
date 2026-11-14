@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
     configure_rate_limiter(settings=settings)
     sensitive_path_prefixes = tuple(
         f"{settings.api_prefix}/{name}"
-        for name in ("auth", "account", "cv", "matches")
+        for name in ("auth", "account", "cv", "matches", "resumes", "applications")
     )
 
     @asynccontextmanager

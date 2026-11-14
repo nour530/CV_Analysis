@@ -168,6 +168,7 @@ class CVAnalysisSummary(BaseModel):
     skill_count: int
     resume_id: str | None
     category: str | None
+    ats_score: int | None = None
     created_at: datetime
 
 

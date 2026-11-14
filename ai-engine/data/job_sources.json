@@ -1,0 +1,23 @@
+{
+  "description": "Real job sources for JobMatch AI (Tunisia). Every entry uses an employer's public, key-free job-board API. Add a company by its board slug; set \"enabled\": false to pause one.",
+  "sources": [
+    {"type": "smartrecruiters", "company": "LEONI1", "country": "tn"},
+    {"type": "smartrecruiters", "company": "Devoteam", "country": "tn"},
+    {"type": "smartrecruiters", "company": "Inetum2", "country": "tn"},
+    {"type": "smartrecruiters", "company": "SopraSteria1", "country": "tn"},
+    {"type": "smartrecruiters", "company": "EdifisGroup", "country": "tn"},
+    {"type": "smartrecruiters", "company": "DigitalVirgo", "country": "tn"},
+    {"type": "smartrecruiters", "company": "SikaAG", "country": "tn"},
+    {"type": "smartrecruiters", "company": "DeliveryHero", "country": "tn"},
+    {"type": "smartrecruiters", "company": "EVERIENCE", "country": "tn"},
+    {"type": "smartrecruiters", "company": "HuberSuhnerAG", "country": "tn"},
+    {"type": "smartrecruiters", "company": "BoschGroup", "country": "tn"},
+    {"type": "recruitee", "company": "veocareers", "country_codes": ["TN"]},
+    {"type": "recruitee", "company": "ozeol", "country_codes": ["TN"]},
+    {"type": "recruitee", "company": "rebootmonkey", "country_codes": ["TN"]},
+    {"type": "lever", "company": "Yassir", "country_codes": ["TN"]},
+    {"type": "ashby", "company": "enpal", "display_name": "Enpal", "country_names": ["Tunisia", "Tunisie"]},
+    {"type": "ashby", "company": "The-Flex", "display_name": "The Flex", "country_names": ["Tunisia", "Tunisie"]},
+    {"type": "remotive", "allowed_locations": ["worldwide", "anywhere", "africa", "emea", "tunisia"]}
+  ]
+}

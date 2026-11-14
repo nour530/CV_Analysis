@@ -2,8 +2,11 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiError, toApiError } from '../../core/api-error';
-import { JobDetailResponse } from '../../core/api.models';
+import { AtsReport, JobDetailResponse } from '../../core/api.models';
 import { JobMatchApiService } from '../../core/api.service';
+import { postedAgo, workplaceLabel } from '../../core/formatters';
+import { ApplicationsStore } from '../../core/applications.store';
+import { AtsReportComponent } from '../../shared/components/ats-report/ats-report';
 import { IconComponent } from '../../shared/components/icon/icon';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header';
 import { StatePanelComponent } from '../../shared/components/state-panel/state-panel';
@@ -12,6 +15,7 @@ import { StatePanelComponent } from '../../shared/components/state-panel/state-p
   selector: 'app-job-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    AtsReportComponent,
     RouterLink,
     IconComponent,
     PageHeaderComponent,
@@ -29,6 +33,42 @@ export class JobDetailPage {
   readonly detail = signal<JobDetailResponse | null>(null);
   readonly loading = signal(true);
   readonly error = signal<ApiError | null>(null);
+  readonly postedAgo = postedAgo;
+  readonly applications = inject(ApplicationsStore);
+  private readonly applicationsLoad = this.applications.load().subscribe({ error: () => undefined });
+
+  toggleSave(): void {
+    const jobId = this.detail()?.job.job_id;
+    if (jobId) {
+      this.applications.toggle(jobId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
+    }
+  }
+  readonly atsReport = signal<AtsReport | null>(null);
+  readonly atsLoading = signal(false);
+  readonly atsError = signal<ApiError | null>(null);
+
+  checkAts(): void {
+    const jobId = this.detail()?.job.job_id;
+    if (!jobId || this.atsLoading()) {
+      return;
+    }
+    this.atsLoading.set(true);
+    this.atsError.set(null);
+    this.api
+      .checkAts({ job_id: jobId })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (report) => {
+          this.atsReport.set(report);
+          this.atsLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.atsError.set(toApiError(error));
+          this.atsLoading.set(false);
+        },
+      });
+  }
+  readonly workplaceLabel = workplaceLabel;
 
   constructor() {
     this.route.paramMap

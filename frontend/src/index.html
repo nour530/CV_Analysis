@@ -2,15 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>JobMatch AI</title>
+    <title>JobMatch AI · ATS CV checker and job matching in Tunisia</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Analyze your CV, explore jobs, and review explainable job matches with JobMatch AI."
+      content="Check your CV against applicant tracking systems, improve it with AI that sticks to your facts, and match it to real jobs in Tunisia."
     />
-    <meta name="theme-color" content="#0d1530" />
+    <meta name="theme-color" content="#f5f6fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Apply a saved light/dark choice before the app renders (avoids a flash).
+      try {
+        var theme = localStorage.getItem('jobmatch.theme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <app-root></app-root>

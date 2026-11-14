@@ -1,0 +1,400 @@
+@if (loading()) {
+  <app-state-panel variant="loading" title="Opening your CV" message="Loading the editor." />
+} @else if (loadError(); as problem) {
+  <app-state-panel
+    variant="error"
+    [title]="problem.status === 404 ? 'This CV was not found' : 'The CV could not load'"
+    [message]="problem.message"
+  />
+  <a class="link" routerLink="/editor">Back to my CVs</a>
+} @else {
+  @let d = doc();
+  @let h = headings();
+  <div class="editor">
+    <header class="editor__toolbar" aria-label="CV tools">
+      <a class="link editor__back" routerLink="/editor">
+        <app-icon name="chevron-left" [size]="16" /> My CVs
+      </a>
+      <input class="input editor__title" [value]="title()" (input)="setTitle($event)" aria-label="CV name" maxlength="120" />
+      <span class="editor__save editor__save--{{ saveState() }}" role="status" aria-live="polite">{{ saveLabel() }}</span>
+      <div class="editor__actions">
+        <label class="sr-only" for="cv-template">Template</label>
+        <select id="cv-template" class="select select--sm" [value]="template()" (change)="setTemplate($event)">
+          <option value="classic">Classic</option>
+          <option value="modern">Modern</option>
+          <option value="compact">Compact</option>
+        </select>
+        <label class="sr-only" for="cv-language">Section language</label>
+        <select id="cv-language" class="select select--sm" [value]="language()" (change)="setLanguage($event)">
+          <option value="en">English headings</option>
+          <option value="fr">Titres en français</option>
+        </select>
+        <button type="button" class="btn btn--secondary btn--sm" (click)="openAts()">
+          ATS {{ atsScore() ?? '—' }}
+        </button>
+        <button type="button" class="btn btn--primary btn--sm" (click)="loadSuggestions()">
+          <app-icon name="sparkle" [size]="15" /> Improve
+        </button>
+        <button type="button" class="btn btn--secondary btn--sm" [disabled]="downloading()" (click)="downloadDocx()">
+          Word
+        </button>
+        <button type="button" class="btn btn--secondary btn--sm" (click)="printPdf()">PDF</button>
+      </div>
+    </header>
+    @if (saveError()) {
+      <div class="alert alert--error" role="alert">
+        <app-icon name="alert" [size]="18" />
+        <p>{{ saveError() }} <button type="button" class="link" (click)="save()">Try again</button></p>
+      </div>
+    }
+
+    <div class="editor__body">
+      <!-- Form ----------------------------------------------------------------- -->
+      <form class="editor__form" (submit)="$event.preventDefault()" aria-label="CV content">
+        <details class="ed-card" open>
+          <summary>Contact details</summary>
+          <div class="form-grid">
+            <div class="field">
+              <label for="c-name">Full name</label>
+              <input id="c-name" class="input" [value]="d.contact.full_name ?? ''" (input)="setContact('full_name', $event)" maxlength="120" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="c-headline">Headline</label>
+              <input id="c-headline" class="input" [value]="d.contact.headline ?? ''" (input)="setContact('headline', $event)" maxlength="160" placeholder="e.g. Data Analyst" />
+            </div>
+            <div class="field">
+              <label for="c-email">Email</label>
+              <input id="c-email" class="input" type="email" [value]="d.contact.email ?? ''" (input)="setContact('email', $event)" maxlength="200" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="c-phone">Phone</label>
+              <input id="c-phone" class="input" type="tel" [value]="d.contact.phone ?? ''" (input)="setContact('phone', $event)" maxlength="40" placeholder="+216 20 123 456" autocomplete="tel" />
+            </div>
+            <div class="field">
+              <label for="c-location">City</label>
+              <input id="c-location" class="input" [value]="d.contact.location ?? ''" (input)="setContact('location', $event)" maxlength="120" placeholder="Tunis, Tunisia" />
+            </div>
+            <div class="field">
+              <label for="c-linkedin">LinkedIn</label>
+              <input id="c-linkedin" class="input" [value]="d.contact.linkedin ?? ''" (input)="setContact('linkedin', $event)" maxlength="200" placeholder="linkedin.com/in/your-name" />
+            </div>
+            <div class="field field--full">
+              <label for="c-website">Website or portfolio <span class="muted">(optional)</span></label>
+              <input id="c-website" class="input" [value]="d.contact.website ?? ''" (input)="setContact('website', $event)" maxlength="200" />
+            </div>
+          </div>
+        </details>
+
+        <details class="ed-card" open>
+          <summary>{{ h['summary'] }}</summary>
+          <div class="field">
+            <label for="c-summary" class="sr-only">{{ h['summary'] }}</label>
+            <textarea id="c-summary" class="textarea textarea--short" [value]="d.summary ?? ''" (input)="setSummary($event)" maxlength="1500"
+                      placeholder="2–3 sentences: your role, years of experience and main strengths."></textarea>
+          </div>
+        </details>
+
+        <details class="ed-card" open>
+          <summary>{{ h['experience'] }} <span class="ed-count">{{ d.experience.length }}</span></summary>
+          <button type="button" class="btn btn--ghost btn--sm ed-add" (click)="addExperience()">+ Add a role</button>
+          @for (item of d.experience; track item.id; let i = $index) {
+            <fieldset class="ed-item">
+              <legend>{{ item.title || 'New role' }}{{ item.company ? ' · ' + item.company : '' }}</legend>
+              <div class="ed-item__tools">
+                <button type="button" class="btn btn--icon btn--ghost" (click)="move('experience', i, -1)" [disabled]="i === 0" aria-label="Move role up">↑</button>
+                <button type="button" class="btn btn--icon btn--ghost" (click)="move('experience', i, 1)" [disabled]="i === d.experience.length - 1" aria-label="Move role down">↓</button>
+                <button type="button" class="btn btn--icon btn--ghost" (click)="remove('experience', i)" aria-label="Remove role">✕</button>
+              </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label [for]="'e-title-' + item.id">Job title</label>
+                  <input [id]="'e-title-' + item.id" class="input" [value]="item.title ?? ''" (input)="setExperience(i, 'title', $event)" maxlength="160" />
+                </div>
+                <div class="field">
+                  <label [for]="'e-company-' + item.id">Company</label>
+                  <input [id]="'e-company-' + item.id" class="input" [value]="item.company ?? ''" (input)="setExperience(i, 'company', $event)" maxlength="160" />
+                </div>
+                <div class="field">
+                  <label [for]="'e-start-' + item.id">Start</label>
+                  <input [id]="'e-start-' + item.id" class="input" [value]="item.start ?? ''" (input)="setExperience(i, 'start', $event)" maxlength="40" placeholder="Mar 2022" />
+                </div>
+                <div class="field">
+                  <label [for]="'e-end-' + item.id">End</label>
+                  <input [id]="'e-end-' + item.id" class="input" [value]="item.end ?? ''" (input)="setExperience(i, 'end', $event)" maxlength="40" [disabled]="item.current" placeholder="Jun 2024" />
+                  <label class="checkbox"><input type="checkbox" [checked]="item.current" (change)="setCurrent(i, $event)" /> I work here now</label>
+                </div>
+                <div class="field field--full">
+                  <label [for]="'e-location-' + item.id">Location</label>
+                  <input [id]="'e-location-' + item.id" class="input" [value]="item.location ?? ''" (input)="setExperience(i, 'location', $event)" maxlength="120" />
+                </div>
+                <div class="field field--full">
+                  <label [for]="'e-bullets-' + item.id">Achievements <span class="muted">· one per line</span></label>
+                  <textarea [id]="'e-bullets-' + item.id" class="textarea textarea--short" [value]="joinLines(item.bullets)" (input)="setBullets(i, $event)"
+                            placeholder="Reduced reporting time by 40% by automating SQL pipelines"></textarea>
+                  <span class="hint">Start with an action verb and add a figure where you can.</span>
+                </div>
+              </div>
+            </fieldset>
+          }
+        </details>
+
+        <details class="ed-card" open>
+          <summary>{{ h['education'] }} <span class="ed-count">{{ d.education.length }}</span></summary>
+          <button type="button" class="btn btn--ghost btn--sm ed-add" (click)="addEducation()">+ Add a degree</button>
+          @for (item of d.education; track item.id; let i = $index) {
+            <fieldset class="ed-item">
+              <legend>{{ item.degree || 'New degree' }}</legend>
+              <div class="ed-item__tools">
+                <button type="button" class="btn btn--icon btn--ghost" (click)="move('education', i, -1)" [disabled]="i === 0" aria-label="Move degree up">↑</button>
+                <button type="button" class="btn btn--icon btn--ghost" (click)="move('education', i, 1)" [disabled]="i === d.education.length - 1" aria-label="Move degree down">↓</button>
+                <button type="button" class="btn btn--icon btn--ghost" (click)="remove('education', i)" aria-label="Remove degree">✕</button>
+              </div>
+              <div class="form-grid">
+                <div class="field field--full">
+                  <label [for]="'d-degree-' + item.id">Degree</label>
+                  <input [id]="'d-degree-' + item.id" class="input" [value]="item.degree ?? ''" (input)="setEducation(i, 'degree', $event)" maxlength="200" />
+                </div>
+                <div class="field field--full">
+                  <label [for]="'d-school-' + item.id">School</label>
+                  <input [id]="'d-school-' + item.id" class="input" [value]="item.school ?? ''" (input)="setEducation(i, 'school', $event)" maxlength="200" />
+                </div>
+                <div class="field">
+                  <label [for]="'d-start-' + item.id">Start</label>
+                  <input [id]="'d-start-' + item.id" class="input" [value]="item.start ?? ''" (input)="setEducation(i, 'start', $event)" maxlength="40" />
+                </div>
+                <div class="field">
+                  <label [for]="'d-end-' + item.id">End</label>
+                  <input [id]="'d-end-' + item.id" class="input" [value]="item.end ?? ''" (input)="setEducation(i, 'end', $event)" maxlength="40" />
+                </div>
+                <div class="field field--full">
+                  <label [for]="'d-details-' + item.id">Details <span class="muted">· optional, one per line</span></label>
+                  <textarea [id]="'d-details-' + item.id" class="textarea textarea--short" [value]="joinLines(item.details)" (input)="setEducationDetails(i, $event)"></textarea>
+                </div>
+              </div>
+            </fieldset>
+          }
+        </details>
+
+        <details class="ed-card" open>
+          <summary>{{ h['skills'] }} <span class="ed-count">{{ d.skills.length }}</span></summary>
+          <div class="chip-list">
+            @for (skill of d.skills; track skill; let i = $index) {
+              <span class="tag chip">
+                {{ skill }}
+                <button type="button" class="chip__remove" (click)="removeSkill(i)" [attr.aria-label]="'Remove ' + skill">✕</button>
+              </span>
+            }
+          </div>
+          <div class="row ed-skill-add">
+            <label class="sr-only" for="skill-add">Add skills</label>
+            <input id="skill-add" class="input" [value]="skillDraft()" (input)="setSkillDraft($event)" (keydown.enter)="addSkillsFromDraft($event)"
+                   placeholder="Add skills, separated by commas" maxlength="300" />
+            <button type="button" class="btn btn--secondary btn--sm" (click)="addSkillsFromDraft()">Add</button>
+          </div>
+        </details>
+
+        <details class="ed-card">
+          <summary>{{ h['languages'] }} <span class="ed-count">{{ d.languages.length }}</span></summary>
+          @for (item of d.languages; track $index; let i = $index) {
+            <div class="row ed-lang">
+              <input class="input" [value]="item.name" (input)="setLanguageItem(i, 'name', $event)" maxlength="60" [attr.aria-label]="'Language ' + (i + 1)" />
+              <input class="input" [value]="item.level ?? ''" (input)="setLanguageItem(i, 'level', $event)" maxlength="60" placeholder="Fluent, B2, native…" [attr.aria-label]="'Level for language ' + (i + 1)" />
+              <button type="button" class="btn btn--icon btn--ghost" (click)="remove('languages', i)" aria-label="Remove language">✕</button>
+            </div>
+          }
+          <button type="button" class="btn btn--ghost btn--sm ed-add" (click)="addLanguage()">+ Add a language</button>
+        </details>
+
+        <details class="ed-card">
+          <summary>{{ h['certifications'] }} <span class="ed-count">{{ d.certifications.length }}</span></summary>
+          <label class="sr-only" for="certs">{{ h['certifications'] }}</label>
+          <textarea id="certs" class="textarea textarea--short" [value]="joinLines(d.certifications)" (input)="setCertifications($event)"
+                    placeholder="One per line, e.g. PMP (2023)"></textarea>
+        </details>
+
+        <details class="ed-card">
+          <summary>{{ h['projects'] }} <span class="ed-count">{{ d.projects.length }}</span></summary>
+          @for (item of d.projects; track item.id; let i = $index) {
+            <fieldset class="ed-item">
+              <legend>{{ item.name || 'New project' }}</legend>
+              <div class="ed-item__tools">
+                <button type="button" class="btn btn--icon btn--ghost" (click)="remove('projects', i)" aria-label="Remove project">✕</button>
+              </div>
+              <div class="field">
+                <label [for]="'p-name-' + item.id">Name</label>
+                <input [id]="'p-name-' + item.id" class="input" [value]="item.name ?? ''" (input)="setProject(i, 'name', $event)" maxlength="160" />
+              </div>
+              <div class="field">
+                <label [for]="'p-desc-' + item.id">Short description</label>
+                <input [id]="'p-desc-' + item.id" class="input" [value]="item.description ?? ''" (input)="setProject(i, 'description', $event)" maxlength="600" />
+              </div>
+              <div class="field">
+                <label [for]="'p-bullets-' + item.id">Highlights <span class="muted">· one per line</span></label>
+                <textarea [id]="'p-bullets-' + item.id" class="textarea textarea--short" [value]="joinLines(item.bullets)" (input)="setProjectBullets(i, $event)"></textarea>
+              </div>
+            </fieldset>
+          }
+          <button type="button" class="btn btn--ghost btn--sm ed-add" (click)="addProject()">+ Add a project</button>
+        </details>
+      </form>
+
+      <!-- Preview ----------------------------------------------------------- -->
+      <div class="editor__preview" aria-label="CV preview">
+        <article class="cv-page cv-page--{{ template() }}" [attr.lang]="language()">
+          <header class="cv-head">
+            <h1>{{ d.contact.full_name || 'Your name' }}</h1>
+            @if (d.contact.headline) { <p class="cv-headline">{{ d.contact.headline }}</p> }
+            @if (contactLine()) { <p class="cv-contact">{{ contactLine() }}</p> }
+          </header>
+          @if (d.summary) {
+            <section><h2>{{ h['summary'] }}</h2><p>{{ d.summary }}</p></section>
+          }
+          @if (d.experience.length) {
+            <section>
+              <h2>{{ h['experience'] }}</h2>
+              @for (item of d.experience; track item.id) {
+                <div class="cv-entry">
+                  <div class="cv-entry__head">
+                    <strong>{{ item.title }}@if (item.title && item.company) { — }{{ item.company }}</strong>
+                    <span>{{ dateRange(item.start, item.end, item.current) }}</span>
+                  </div>
+                  @if (item.location) { <p class="cv-sub">{{ item.location }}</p> }
+                  @if (item.bullets.length) {
+                    <ul>@for (bullet of item.bullets; track $index) { <li>{{ bullet }}</li> }</ul>
+                  }
+                </div>
+              }
+            </section>
+          }
+          @if (d.education.length) {
+            <section>
+              <h2>{{ h['education'] }}</h2>
+              @for (item of d.education; track item.id) {
+                <div class="cv-entry">
+                  <div class="cv-entry__head">
+                    <strong>{{ item.degree }}@if (item.degree && item.school) { — }{{ item.school }}</strong>
+                    <span>{{ dateRange(item.start, item.end) }}</span>
+                  </div>
+                  @if (item.details.length) {
+                    <ul>@for (detail of item.details; track $index) { <li>{{ detail }}</li> }</ul>
+                  }
+                </div>
+              }
+            </section>
+          }
+          @if (d.projects.length) {
+            <section>
+              <h2>{{ h['projects'] }}</h2>
+              @for (item of d.projects; track item.id) {
+                <div class="cv-entry">
+                  <div class="cv-entry__head"><strong>{{ item.name }}</strong></div>
+                  @if (item.description) { <p class="cv-sub">{{ item.description }}</p> }
+                  @if (item.bullets.length) {
+                    <ul>@for (bullet of item.bullets; track $index) { <li>{{ bullet }}</li> }</ul>
+                  }
+                </div>
+              }
+            </section>
+          }
+          @if (d.skills.length) {
+            <section><h2>{{ h['skills'] }}</h2><p>{{ d.skills.join(', ') }}</p></section>
+          }
+          @if (d.languages.length) {
+            <section>
+              <h2>{{ h['languages'] }}</h2>
+              <p>
+                @for (item of d.languages; track $index; let last = $last) {
+                  {{ item.name }}@if (item.level) {: {{ item.level }}}@if (!last) { · }
+                }
+              </p>
+            </section>
+          }
+          @if (d.certifications.length) {
+            <section>
+              <h2>{{ h['certifications'] }}</h2>
+              <ul>@for (item of d.certifications; track $index) { <li>{{ item }}</li> }</ul>
+            </section>
+          }
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side panel --------------------------------------------------------------- -->
+  @if (panel() !== 'none') {
+    <aside class="ed-panel" [attr.aria-label]="panel() === 'ats' ? 'ATS check' : 'Suggestions'">
+      <div class="ed-panel__head">
+        <h2>{{ panel() === 'ats' ? 'ATS check' : 'Improve your CV' }}</h2>
+        <button type="button" class="btn btn--icon btn--ghost" (click)="closePanel()" aria-label="Close panel">✕</button>
+      </div>
+
+      @if (panel() === 'ats') {
+        @if (atsLoading()) {
+          <p class="muted">Checking…</p>
+        } @else if (atsReport(); as report) {
+          <app-ats-report [report]="report" />
+        }
+      } @else {
+        <div class="ed-ai">
+          <label class="checkbox">
+            <input type="checkbox" [checked]="useAi()" [disabled]="!aiConsent()" (change)="toggleAi($event)" />
+            <span>
+              Use AI rewrites
+              @if (aiConsent()) {
+                <span class="muted">· sends your summary and bullet points (never your contact details) to the AI provider</span>
+              } @else {
+                <span class="muted">· enable remote AI analysis in <a routerLink="/settings" class="link">Settings</a> first</span>
+              }
+            </span>
+          </label>
+          <button type="button" class="btn btn--secondary btn--sm" [disabled]="suggestionsLoading()" (click)="loadSuggestions()">
+            {{ suggestionsLoading() ? 'Thinking…' : 'Refresh suggestions' }}
+          </button>
+        </div>
+        @if (suggestionsError()) {
+          <div class="alert alert--error" role="alert"><p>{{ suggestionsError() }}</p></div>
+        }
+        @if (applyMessage()) {
+          <div class="alert alert--info" role="status"><p>{{ applyMessage() }}</p></div>
+        }
+        @if (suggestions(); as response) {
+          @if (response.notice) { <p class="ed-notice">{{ response.notice }}</p> }
+          @if (response.job_title) { <p class="muted small">Tailored to: <strong>{{ response.job_title }}</strong></p> }
+          @if (!pendingSuggestions().length) {
+            <p class="muted">Nothing left to review.</p>
+          }
+          <ul class="ed-suggestions">
+            @for (item of pendingSuggestions(); track item.id) {
+              <li class="ed-sg" [class.ed-sg--ai]="response.source === 'ai' && item.suggestion && item.field !== 'skills'">
+                <p class="ed-sg__target">{{ targetLabel(item) }}</p>
+                @if (item.field === 'skills') {
+                  <p class="ed-sg__reason">{{ item.reason }}</p>
+                  <div class="chip-list">
+                    @for (skill of item.add_skills; track skill) {
+                      <button type="button" class="tag chip chip--add" (click)="accept(item, skill)" [attr.aria-label]="'Add ' + skill + ' to skills'">+ {{ skill }}</button>
+                    }
+                  </div>
+                } @else {
+                  @if (item.original) { <p class="ed-sg__original">{{ item.original }}</p> }
+                  @if (item.suggestion) { <p class="ed-sg__new">{{ item.suggestion }}</p> }
+                  <p class="ed-sg__reason">{{ item.reason }}</p>
+                  @for (warning of item.warnings; track $index) {
+                    <p class="ed-sg__warning"><app-icon name="alert" [size]="13" /> {{ warning }}</p>
+                  }
+                }
+                <div class="ed-sg__actions">
+                  @if (item.suggestion && item.field !== 'skills') {
+                    <button type="button" class="btn btn--primary btn--sm" (click)="accept(item)">Accept</button>
+                  }
+                  <button type="button" class="btn btn--ghost btn--sm" (click)="dismiss(item)">{{ item.suggestion || item.field === 'skills' ? 'Dismiss' : 'Got it' }}</button>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else if (suggestionsLoading()) {
+          <p class="muted">Looking for improvements…</p>
+        }
+      }
+    </aside>
+  }
+}

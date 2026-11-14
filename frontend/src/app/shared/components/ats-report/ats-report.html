@@ -1,0 +1,144 @@
+@let data = report();
+<div class="ats">
+  @if (showHead()) {
+  <div class="ats__head">
+    <app-score-ring [score]="ringValue()" caption="ATS score" label="ATS readiness" [tone]="tone()" />
+    <div class="ats__headline">
+      <span class="ats__grade ats__grade--{{ data.grade }}">{{ gradeLabel() }}</span>
+      <p class="ats__summary">{{ data.summary }}</p>
+      @if (!data.layout_checked) {
+        <p class="ats__note">
+          <app-icon name="info" [size]="14" />
+          Layout (tables, columns, text boxes) is only checked for uploaded PDF or DOCX files.
+        </p>
+      }
+    </div>
+  </div>
+  }
+
+  <ul class="ats__categories" aria-label="Score by area">
+    @for (group of groups(); track group.id) {
+      <li>
+        <div class="ats__category-label">
+          <span>{{ group.label }}</span>
+          <strong>{{ group.score }}%</strong>
+        </div>
+        <div class="ats__bar" role="progressbar" [attr.aria-label]="group.label + ' ' + group.score + '%'"
+             aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="group.score">
+          <span class="ats__bar-fill ats__bar-fill--{{ categoryTone(group.score) }}" [style.width.%]="group.score"></span>
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (data.keyword_match; as match) {
+    <section class="ats__keywords" aria-label="Job keywords">
+      <h3>
+        Keywords for {{ match.job_title || 'this job' }}
+        @if (match.company) { <span class="muted">· {{ match.company }}</span> }
+      </h3>
+      <p class="muted small">
+        Your CV covers {{ keywordPercent() }}% of the skills this job asks for.
+      </p>
+      @if (match.missing_required.length) {
+        <p class="ats__kw-label">Missing required skills</p>
+        <div class="chip-list">
+          @for (skill of match.missing_required; track skill) {
+            <span class="tag tag--danger">{{ skill }}</span>
+          }
+        </div>
+      }
+      @if (match.missing_preferred.length) {
+        <p class="ats__kw-label">Missing nice-to-have skills</p>
+        <div class="chip-list">
+          @for (skill of match.missing_preferred.slice(0, 12); track skill) {
+            <span class="tag tag--warning">{{ skill }}</span>
+          }
+        </div>
+      }
+      @if (match.matched.length) {
+        <p class="ats__kw-label">Already in your CV</p>
+        <div class="chip-list">
+          @for (skill of match.matched.slice(0, 16); track skill) {
+            <span class="tag tag--success">{{ skill }}</span>
+          }
+        </div>
+      }
+      <p class="hint">Only add a skill if you really have it. Use the same wording as the job ad.</p>
+    </section>
+  }
+
+  @if (data.top_fixes.length) {
+    <section class="ats__fixes" aria-label="Top fixes">
+      <h3>Fix these first</h3>
+      <ol>
+        @for (fix of data.top_fixes; track $index) {
+          <li>{{ fix }}</li>
+        }
+      </ol>
+    </section>
+  }
+
+  @if (!compact()) {
+    <section class="ats__sections" aria-label="Sections">
+      <h3>Sections detected</h3>
+      <div class="chip-list">
+        @for (section of foundSections(); track section.id) {
+          <span class="tag tag--success" [attr.title]="section.heading">
+            <app-icon name="check" [size]="12" /> {{ section.label }}
+          </span>
+        }
+        @for (section of missingSections(); track section.id) {
+          <span class="tag tag--neutral">{{ section.label }} · missing</span>
+        }
+      </div>
+    </section>
+
+    <div class="ats__groups">
+      @for (group of groups(); track group.id) {
+        <details class="ats__group" [open]="group.issues > 0">
+          <summary>
+            <span>{{ group.label }}</span>
+            @if (group.issues) {
+              <span class="tag tag--warning">{{ group.issues }} to improve</span>
+            } @else {
+              <span class="tag tag--success">All good</span>
+            }
+          </summary>
+          <ul class="ats__checks">
+            @for (check of group.checks; track check.id) {
+              <li class="ats__check ats__check--{{ check.status }}">
+                <span class="ats__status" [attr.aria-label]="statusLabel(check.status)">
+                  @switch (check.status) {
+                    @case ('pass') { <app-icon name="check" [size]="14" /> }
+                    @case ('info') { <app-icon name="info" [size]="14" /> }
+                    @default { <app-icon name="alert" [size]="14" /> }
+                  }
+                </span>
+                <div>
+                  <p class="ats__check-title">{{ check.title }}</p>
+                  <p class="ats__check-message">{{ check.message }}</p>
+                  @if (check.fix) {
+                    <p class="ats__check-fix"><strong>How to fix:</strong> {{ check.fix }}</p>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        </details>
+      }
+    </div>
+
+    <dl class="ats__stats">
+      <div><dt>Words</dt><dd>{{ data.stats.word_count }}</dd></div>
+      <div><dt>Bullet points</dt><dd>{{ data.stats.bullet_count }}</dd></div>
+      <div><dt>With numbers</dt><dd>{{ data.stats.quantified_bullets }}</dd></div>
+      <div><dt>Skills recognised</dt><dd>{{ data.stats.skill_count }}</dd></div>
+      @if (data.stats.page_count) {
+        <div><dt>Pages</dt><dd>{{ data.stats.page_count }}</dd></div>
+      }
+    </dl>
+  }
+
+  <p class="ats__disclaimer">{{ data.disclaimer }}</p>
+</div>

@@ -81,7 +81,7 @@ describe('CvPage', () => {
     expect(api.analyzeCvUpload).not.toHaveBeenCalled();
   });
 
-  it('accepts PDF and DOCX files', () => {
+  it('accepts PDF and DOCX files and starts the check right away', () => {
     for (const [name, type] of [
       ['cv.pdf', 'application/pdf'],
       [
@@ -90,13 +90,15 @@ describe('CvPage', () => {
       ],
     ]) {
       const file = new File(['document bytes'], name, { type });
+      api.analyzeCvUpload.mockClear();
 
       page.onFileSelected({
         target: { files: [file], value: name },
       } as unknown as Event);
 
-      expect(page.selectedFile()).toBe(file);
       expect(page.fileError()).toBe('');
+      expect(api.analyzeCvUpload).toHaveBeenCalledTimes(1);
+      expect((api.analyzeCvUpload.mock.calls[0] as unknown[])[0]).toBe(file);
     }
   });
 

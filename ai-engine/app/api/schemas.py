@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import Field, model_validator
 
+from app.schemas.ats import AtsReport
 from app.schemas.common import StrictSchema
 from app.schemas.hybrid_match import HybridMatchResult, ResumeProfile
 
@@ -67,6 +69,7 @@ class CVProfileResponse(StrictSchema):
     document: DocumentMetadata | None = None
     analysis_id: str | None = Field(default=None, max_length=36)
     candidate_profile_id: str | None = Field(default=None, max_length=36)
+    ats: AtsReport | None = None
 
 
 class JobSummary(StrictSchema):
@@ -76,6 +79,33 @@ class JobSummary(StrictSchema):
     description_excerpt: str = Field(default="", max_length=600)
     required_skills: list[str] = Field(default_factory=list, max_length=200)
     preferred_skills: list[str] = Field(default_factory=list, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    company_logo_url: str | None = Field(default=None, max_length=1000)
+    location: str | None = Field(default=None, max_length=300)
+    city: str | None = Field(default=None, max_length=120)
+    country_code: str | None = Field(default=None, max_length=2)
+    workplace: str | None = Field(default=None, max_length=20)
+    employment_type: str | None = Field(default=None, max_length=60)
+    experience_level: str | None = Field(default=None, max_length=60)
+    salary: str | None = Field(default=None, max_length=120)
+    apply_url: str | None = Field(default=None, max_length=1000)
+    posted_at: datetime | None = None
+    source: str = Field(default="dataset", max_length=40)
+    source_label: str | None = Field(default=None, max_length=60)
+
+
+class FacetValue(StrictSchema):
+    value: str = Field(max_length=200)
+    count: int = Field(ge=0)
+
+
+class JobFacetsResponse(StrictSchema):
+    total: int = Field(ge=0)
+    live: bool
+    categories: list[FacetValue] = Field(default_factory=list, max_length=100)
+    cities: list[FacetValue] = Field(default_factory=list, max_length=100)
+    companies: list[FacetValue] = Field(default_factory=list, max_length=100)
+    workplaces: list[FacetValue] = Field(default_factory=list, max_length=100)
 
 
 class JobDetailResponse(StrictSchema):
@@ -163,3 +193,18 @@ class RecommendationResponse(StrictSchema):
     resume_skill_count: int = Field(ge=0)
     warnings: list[str] = Field(default_factory=list, max_length=20)
     match_id: str | None = Field(default=None, max_length=36)
+
+
+class AtsCheckRequest(StrictSchema):
+    """Re-run the ATS check on a saved CV, optionally against a job."""
+
+    analysis_id: str | None = Field(default=None, max_length=36)
+    job_id: str | None = Field(default=None, max_length=120)
+    job_text: str | None = Field(default=None, max_length=100_000)
+    job_title: str | None = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def validate_job(self) -> "AtsCheckRequest":
+        if self.job_id and self.job_text:
+            raise ValueError("Provide job_id or job_text, not both.")
+        return self

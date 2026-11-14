@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.api.schemas import JobSummary
 from app.services.job_catalog import CatalogJob
+from app.services.jobs.sources import SOURCE_LABELS
 
 JOB_SUMMARY_ITEM_LIMIT = 200
 JOB_SUMMARY_EXCERPT_LIMIT = 500
@@ -22,6 +23,19 @@ def job_summary(job: CatalogJob) -> JobSummary:
         description_excerpt=job.description_excerpt,
         required_skills=list(job.required_skills[:JOB_SUMMARY_ITEM_LIMIT]),
         preferred_skills=list(job.preferred_skills[:JOB_SUMMARY_ITEM_LIMIT]),
+        company=job.company,
+        company_logo_url=job.company_logo_url,
+        location=job.location,
+        city=job.city,
+        country_code=job.country_code,
+        workplace=job.workplace,
+        employment_type=job.employment_type,
+        experience_level=job.experience_level,
+        salary=job.salary_text,
+        apply_url=job.apply_url,
+        posted_at=job.posted_at,
+        source=job.source,
+        source_label=SOURCE_LABELS.get(job.source),
     )
 
 

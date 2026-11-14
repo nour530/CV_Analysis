@@ -21,6 +21,8 @@ COPY app ./app
 COPY data/features/job_features.csv ./data/features/job_features.csv
 COPY data/features/skills_dictionary.csv ./data/features/skills_dictionary.csv
 COPY data/features/skill_aliases.csv ./data/features/skill_aliases.csv
+COPY data/features/skills_supplement.csv ./data/features/skills_supplement.csv
+COPY data/job_sources.json ./data/job_sources.json
 
 RUN mkdir -p /app/data \
     && chown -R jobmatch:jobmatch /app

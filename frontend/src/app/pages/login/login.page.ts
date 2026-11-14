@@ -47,7 +47,8 @@ export class LoginPage {
       this.notice.set(
         'If this email was available, the account can now sign in.',
       );
-      const email = queryParams.get('email');
+      const state = this.router.getCurrentNavigation()?.extras.state ?? history.state;
+      const email = typeof state?.['email'] === 'string' ? (state['email'] as string) : null;
       if (email) {
         this.form.controls.email.setValue(email);
       }

@@ -1,359 +1,192 @@
-<div class="page">
-  <app-page-header
-    eyebrow="Candidate profile"
-    title="My CV"
-    description="Upload a TXT, PDF, or DOCX CV, or paste text, then review the skills and evidence extracted by the matching API."
-  >
-    @if (hasCv()) {
-      <a class="btn btn--secondary" routerLink="/matches">
-        <app-icon name="matches" [size]="17" />
-        Review matches
-      </a>
-      <button type="button" class="btn btn--danger" (click)="clearCv()">
-        <app-icon name="close" [size]="16" />
-        Clear CV
-      </button>
-    }
-  </app-page-header>
+<div class="page cvp">
+  @if (cvProfile(); as profile) {
+    <!-- Has a CV: lead with the result ---------------------------------------- -->
+    <section class="cvp-hero card">
+      <div class="cvp-hero__score">
+        @if (profile.ats; as ats) {
+          <div class="cvp-score cvp-score--{{ ats.score >= 75 ? 'good' : ats.score >= 50 ? 'fair' : 'poor' }}">
+            <strong>{{ ats.score }}</strong>
+            <span>/100</span>
+          </div>
+        }
+        <div>
+          <p class="cvp-hero__kicker">Your CV</p>
+          <h1>
+            @if (profile.ats; as ats) {
+              {{ ats.score >= 85 ? 'Great shape for ATS' : ats.score >= 70 ? 'Almost there' : ats.score >= 50 ? 'A few fixes to make' : 'Needs some work' }}
+            } @else {
+              Your CV is analysed
+            }
+          </h1>
+          <p class="cvp-hero__text">
+            @if (profile.ats; as ats) {
+              {{ ats.summary }}
+            } @else {
+              Upload it again to get your ATS score.
+            }
+          </p>
+          @if (profile.document; as document) {
+            <p class="cvp-source">
+              <app-icon name="cv" [size]="15" />
+              {{ document.filename }} · {{ documentFormat(document) }} ·
+              {{ document.character_count.toLocaleString('en-US') }} characters · {{ updatedAt() }}
+            </p>
+          }
+        </div>
+      </div>
+      <div class="cvp-hero__actions">
+        <a class="btn btn--primary" routerLink="/editor">
+          <app-icon name="edit" [size]="16" /> Improve in CV builder
+        </a>
+        <a class="btn btn--secondary" routerLink="/jobs">
+          <app-icon name="jobs" [size]="16" /> See matching jobs
+        </a>
+        <button type="button" class="btn btn--ghost" (click)="showUploader.set(!showUploader())" [attr.aria-expanded]="showUploader()">
+          <app-icon name="upload" [size]="16" /> Upload a new version
+        </button>
+      </div>
+    </section>
+  } @else {
+    <header class="cvp-intro">
+      <h1>Let's check your CV</h1>
+      <p>Upload it and get your ATS score with clear fixes in about 30 seconds. English or French, PDF or Word.</p>
+    </header>
+  }
 
+  @if (successMessage(); as message) {
+    <div class="alert alert--success" role="status">
+      <app-icon name="check" [size]="18" />
+      <p>{{ message }}</p>
+    </div>
+  }
   @if (apiError(); as error) {
     <div class="alert alert--error" role="alert">
       <app-icon name="alert" [size]="18" />
-      <div>
-        <strong>{{ error.message }}</strong>
-        @if (error.requestId) {
-          <p class="small">Request ID: {{ error.requestId }}</p>
-        }
-      </div>
+      <p>{{ error.message }}</p>
     </div>
   }
 
-  @if (successMessage()) {
-    <div class="alert alert--success" role="status">
-      <app-icon name="check" [size]="18" />
-      <p>{{ successMessage() }}</p>
-    </div>
-  }
-
-  <div class="cv-layout">
-    <section class="card card--padded">
-      <div class="card__header">
-        <div>
-          <p class="eyebrow">Input</p>
-          <h2 class="card__title">Add your CV</h2>
-          <p class="card__subtitle">
-            Supports TXT, PDF, and DOCX. Legacy .text, .md, and .csv text files also work.
-            Scanned/image-only PDFs need OCR and are not supported.
-          </p>
-        </div>
-      </div>
-
-      <div class="segmented" role="tablist" aria-label="CV input method">
-        <button
-          type="button"
-          role="tab"
-          [attr.aria-selected]="mode() === 'paste'"
-          [class.is-active]="mode() === 'paste'"
-          (click)="switchMode('paste')"
-        >
-          <app-icon name="cv" [size]="16" />
-          Paste text
+  <!-- Uploader ---------------------------------------------------------------- -->
+  @if (!cvProfile() || showUploader()) {
+    <section class="cvp-upload card" aria-label="Add your CV">
+      <div class="cvp-tabs" role="tablist" aria-label="How to add your CV">
+        <button type="button" role="tab" [attr.aria-selected]="mode() === 'upload'" [class.is-active]="mode() === 'upload'" (click)="switchMode('upload')">
+          <app-icon name="upload" [size]="16" /> Upload a file
         </button>
-        <button
-          type="button"
-          role="tab"
-          [attr.aria-selected]="mode() === 'upload'"
-          [class.is-active]="mode() === 'upload'"
-          (click)="switchMode('upload')"
-        >
-          <app-icon name="upload" [size]="16" />
-          Upload file
+        <button type="button" role="tab" [attr.aria-selected]="mode() === 'paste'" [class.is-active]="mode() === 'paste'" (click)="switchMode('paste')">
+          <app-icon name="cv" [size]="16" /> Paste text
         </button>
       </div>
 
-      <form [formGroup]="form" (ngSubmit)="mode() === 'paste' ? submitPaste() : submitUpload()" novalidate>
-        @if (mode() === 'paste') {
-          <div class="field">
-            <label for="resume-text">CV text</label>
-            <textarea
-              id="resume-text"
-              class="textarea"
-              [class.textarea--invalid]="!!textError()"
-              formControlName="resumeText"
-              placeholder="Paste your CV here, including experience, education, and skills."
-              [attr.aria-describedby]="textError() ? 'resume-text-error resume-text-hint' : 'resume-text-hint'"
-              [attr.aria-invalid]="!!textError()"
-            ></textarea>
-            <div class="field-meta">
-              <span id="resume-text-hint" class="hint">
-                Up to {{ maxTextChars.toLocaleString('en-US') }} characters.
-              </span>
-              <span class="hint">
-                {{ form.controls.resumeText.value.length.toLocaleString('en-US') }} /
-                {{ maxTextChars.toLocaleString('en-US') }}
-              </span>
-            </div>
-            @if (textError()) {
-              <span id="resume-text-error" class="field-error">{{ textError() }}</span>
-            }
-          </div>
-        } @else {
-          <div class="field">
-            <label for="cv-file">CV file</label>
-            <label class="drop-zone">
-              <span class="drop-zone__icon"><app-icon name="upload" [size]="24" /></span>
-              <strong>
-                {{ selectedFile() ? selectedFile()?.name : 'Choose a CV file' }}
-              </strong>
-              <span class="hint">
-                @if (selectedFile(); as file) {
-                  {{ fileSize(file) }} · ready to analyse
-                } @else {
-                  TXT, PDF, or DOCX · maximum {{ maxFileLabel }}
-                }
-              </span>
-              <input
-                #fileInput
-                id="cv-file"
-                class="visually-hidden"
-                type="file"
-                [accept]="acceptedExtensions"
-                (change)="onFileSelected($event)"
-              />
-            </label>
-            @if (fileError()) {
-              <span class="field-error" role="alert">{{ fileError() }}</span>
-            }
-          </div>
-
+      @if (mode() === 'upload') {
+        <label
+          class="cvp-drop"
+          [class.is-dragging]="dragging()"
+          [class.is-busy]="loading()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="dragging.set(false)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            #fileInput
+            type="file"
+            class="sr-only"
+            [accept]="acceptedExtensions"
+            [disabled]="loading()"
+            (change)="onFileSelected($event)"
+          />
+          <span class="cvp-drop__icon" aria-hidden="true"><app-icon name="upload" [size]="28" /></span>
           @if (loading()) {
-            <div class="upload-progress" role="status" aria-live="polite">
-              <div class="row row--between">
-                <span class="small muted">{{ uploadStatus() }}</span>
-                @if (uploadProgress() !== null) {
-                  <strong class="small">{{ uploadProgress() }}%</strong>
-                }
-              </div>
-              <div
-                class="progress"
-                role="progressbar"
-                aria-label="CV upload and processing progress"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                [attr.aria-valuenow]="uploadProgress() ?? 0"
-              >
-                <span
-                  class="progress__bar"
-                  [style.width.%]="uploadProgress() ?? 0"
-                ></span>
-              </div>
-            </div>
+            <strong>{{ uploadStatus() || 'Analysing your CV…' }}</strong>
+            <span class="cvp-drop__bar" aria-hidden="true"><span [style.width.%]="uploadProgress() ?? 100"></span></span>
+          } @else if (selectedFile(); as file) {
+            <strong>{{ file.name }}</strong>
+            <span class="muted">{{ fileSize(file) }}</span>
+          } @else {
+            <strong>Drop your CV here, or <span class="link">browse</span></strong>
+            <span class="muted">PDF, Word (.docx) or text · up to {{ maxFileLabel }}</span>
           }
+        </label>
+        @if (fileError()) {
+          <p class="field-error" role="alert">{{ fileError() }}</p>
         }
-
-        <div class="form-grid metadata-grid">
-          <div class="field">
-            <label for="resume-id">Resume ID <span class="muted">(optional)</span></label>
-            <input
-              id="resume-id"
-              class="input"
-              type="text"
-              formControlName="resumeId"
-              placeholder="e.g. candidate-001"
-              maxlength="120"
-            />
-            <span class="hint">A local reference used in API responses.</span>
-          </div>
-          <div class="field">
-            <label for="resume-category">Target category <span class="muted">(optional)</span></label>
-            <input
-              id="resume-category"
-              class="input"
-              type="text"
-              formControlName="category"
-              placeholder="e.g. Data Science"
-              maxlength="120"
-            />
-            <span class="hint">Can improve category compatibility scoring.</span>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn--primary" [disabled]="loading()">
-            @if (loading()) {
-              <span class="spinner" aria-hidden="true"></span>
-              Analysing…
-            } @else {
-              <app-icon name="sparkle" [size]="17" />
-              {{ mode() === 'paste' ? 'Analyse CV text' : 'Upload and analyse' }}
-            }
+        @if (selectedFile() && !loading()) {
+          <button type="button" class="btn btn--primary cvp-submit" (click)="submitUpload()">
+            Check my CV
+            <app-icon name="arrow-right" [size]="16" />
           </button>
-          <span class="hint">
-            <app-icon name="shield" [size]="14" />
-            Uploads are processed in memory and are not stored.
-          </span>
-        </div>
-      </form>
-    </section>
-
-    <aside class="stack">
-      @if (cvProfile(); as profile) {
-        <section class="card card--padded cv-summary">
-          <div class="card__header">
-            <div>
-              <p class="eyebrow">Current analysis</p>
-              <h2 class="card__title">Profile ready</h2>
-            </div>
-            <span class="tag tag--success">Analysed</span>
-          </div>
-
-          <div class="summary-number">
-            <strong>{{ profile.skill_count | number }}</strong>
-            <span>extracted skills</span>
-          </div>
-
-          <dl class="meta-list">
-            <div>
-              <dt>Resume ID</dt>
-              <dd>{{ profile.profile.resume_id || 'Not set' }}</dd>
-            </div>
-            <div>
-              <dt>Category</dt>
-              <dd>{{ profile.profile.category || 'Not set' }}</dd>
-            </div>
-            <div>
-              <dt>Experience evidence</dt>
-              <dd>{{ profile.experience_evidence_count }}</dd>
-            </div>
-            <div>
-              <dt>Education evidence</dt>
-              <dd>{{ profile.profile.education_evidence.length }}</dd>
-            </div>
-            <div>
-              <dt>Last analysed</dt>
-              <dd>{{ updatedAt() }}</dd>
-            </div>
-            @if (profile.document; as document) {
-              <div>
-                <dt>Source</dt>
-                <dd>{{ document.filename }}</dd>
-              </div>
-              <div>
-                <dt>Format</dt>
-                <dd>{{ documentFormat(document) }}</dd>
-              </div>
-              <div>
-                <dt>Extraction</dt>
-                <dd>
-                  Complete · {{ document.character_count.toLocaleString('en-US') }}
-                  characters
-                </dd>
-              </div>
-            }
-          </dl>
-
-          <a class="btn btn--primary btn--sm" routerLink="/matches">
-            <app-icon name="matches" [size]="16" />
-            Find my matches
-          </a>
-        </section>
-
-        <div class="alert alert--info">
-          <app-icon name="info" [size]="18" />
-          <p>
-            The current API returns skills, evidence, and an analysed text field.
-            It does not return a candidate name or structured employer history, so
-            those fields are not invented here.
-          </p>
-        </div>
+        }
       } @else {
-        <app-state-panel
-          variant="empty"
-          title="No CV analysed yet"
-          message="Add your CV on the left. Skills and evidence will appear here once the API responds."
-        />
+        <form class="cvp-paste" [formGroup]="form" (ngSubmit)="submitPaste()">
+          <label class="sr-only" for="resume-text">Your CV text</label>
+          <textarea
+            id="resume-text"
+            class="textarea"
+            formControlName="resumeText"
+            placeholder="Paste your whole CV here: contact details, experience, education, skills…"
+            [attr.maxlength]="maxTextChars"
+            [class.textarea--invalid]="textError()"
+          ></textarea>
+          @if (textError()) {
+            <p class="field-error" role="alert">{{ textError() }}</p>
+          }
+          <button type="submit" class="btn btn--primary cvp-submit" [disabled]="loading()">
+            {{ loading() ? 'Analysing…' : 'Check my CV' }}
+            <app-icon name="arrow-right" [size]="16" />
+          </button>
+        </form>
       }
-    </aside>
-  </div>
+
+      <p class="cvp-privacy">
+        <app-icon name="shield" [size]="15" />
+        Your file is read and then discarded; only the text is kept in your account. Nothing is sent to an AI unless you turn it on.
+      </p>
+    </section>
+  }
 
   @if (cvProfile(); as profile) {
-    <section class="card card--padded">
+    @if (profile.ats; as ats) {
+      <section class="card card--padded" id="ats-report" aria-labelledby="ats-title">
+        <div class="card__header">
+          <div>
+            <h2 class="card__title" id="ats-title">Your ATS report</h2>
+            <p class="card__subtitle">How applicant tracking systems read your CV, and what to fix first.</p>
+          </div>
+        </div>
+        <app-ats-report [report]="ats" [showHead]="false" />
+      </section>
+    }
+
+    <section class="card card--padded" aria-labelledby="skills-title">
       <div class="card__header">
         <div>
-          <p class="eyebrow">Skills</p>
-          <h2 class="card__title">Extracted skill profile</h2>
-          <p class="card__subtitle">
-            Grouped by the categories returned by the analysis service.
-          </p>
+          <h2 class="card__title" id="skills-title">Skills we found ({{ profile.skill_count }})</h2>
+          <p class="card__subtitle">Employers and job matching use these. Missing one? Add it in the CV builder.</p>
         </div>
+        <a class="btn btn--secondary btn--sm" routerLink="/editor">Edit skills</a>
       </div>
-
       @if (skillGroups().length) {
-        <div class="skill-groups">
+        <div class="cvp-skills">
           @for (group of skillGroups(); track group.category) {
-            <section>
-              <div class="skill-group__heading">
-                <h3>{{ group.label }}</h3>
-                <span class="count-pill">{{ group.skills.length }}</span>
-              </div>
+            <div class="cvp-skills__group">
+              <h3>{{ group.label }}</h3>
               <div class="chip-list">
                 @for (skill of group.skills; track skill.skill) {
-                  <span
-                    class="tag tag--accent"
-                    [title]="skillEvidence(skill)"
-                  >
-                    {{ skill.skill }}
-                    <small>{{ confidence(skill) }}</small>
-                  </span>
+                  <span class="tag" [attr.title]="skillEvidence(skill)">{{ skill.skill }}</span>
                 }
               </div>
-            </section>
+            </div>
           }
         </div>
       } @else {
-        <p class="muted">No skills were extracted from this CV.</p>
+        <p class="muted">We couldn't recognise specific skills. Add a "Skills" section listing your tools and methods.</p>
       }
     </section>
 
-    <div class="grid grid--2">
-      <section class="card card--padded">
-        <div class="skill-group__heading">
-          <h2 class="card__title">Experience evidence</h2>
-          <span class="count-pill">{{ profile.profile.experience_evidence.length }}</span>
-        </div>
-        @if (profile.profile.experience_evidence.length) {
-          <ul class="evidence-list">
-            @for (item of profile.profile.experience_evidence; track $index) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        } @else {
-          <p class="muted small">No experience evidence was returned.</p>
-        }
-      </section>
-
-      <section class="card card--padded">
-        <div class="skill-group__heading">
-          <h2 class="card__title">Education evidence</h2>
-          <span class="count-pill">{{ profile.profile.education_evidence.length }}</span>
-        </div>
-        @if (profile.profile.education_evidence.length) {
-          <ul class="evidence-list">
-            @for (item of profile.profile.education_evidence; track $index) {
-              <li>{{ item }}</li>
-            }
-          </ul>
-        } @else {
-          <p class="muted small">No education evidence was returned.</p>
-        }
-      </section>
+    <div class="cvp-danger">
+      <button type="button" class="btn btn--ghost btn--sm" [disabled]="clearingCv()" (click)="clearCv()">
+        <app-icon name="trash" [size]="15" /> {{ clearingCv() ? 'Deleting…' : 'Delete my CV data' }}
+      </button>
     </div>
-
-    @if (profile.profile.semantic_text) {
-      <details class="card card--padded analysis-text">
-        <summary>View analysed CV text</summary>
-        <pre>{{ profile.profile.semantic_text }}</pre>
-      </details>
-    }
   }
 </div>

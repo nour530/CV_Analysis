@@ -56,6 +56,37 @@ export function toPercent(value: number | null | undefined): number {
   return Math.max(0, Math.min(100, Math.round(value * 100)));
 }
 
+const WORKPLACE_LABELS: Record<string, string> = {
+  onsite: 'On-site',
+  hybrid: 'Hybrid',
+  remote: 'Remote',
+};
+
+export function workplaceLabel(value: string | null | undefined): string | null {
+  return value ? (WORKPLACE_LABELS[value] ?? null) : null;
+}
+
+/** "Today", "3 days ago", "2 weeks ago", "5 months ago" for a posting date. */
+export function postedAgo(
+  value: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!value) {
+    return null;
+  }
+  const posted = new Date(value.endsWith('Z') || value.includes('+') ? value : `${value}Z`);
+  if (Number.isNaN(posted.getTime())) {
+    return null;
+  }
+  const days = Math.max(0, Math.floor((now.getTime() - posted.getTime()) / 86_400_000));
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 14) return `${days} days ago`;
+  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
+  if (days < 730) return `${Math.floor(days / 30)} months ago`;
+  return `${Math.floor(days / 365)} years ago`;
+}
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) {
     return '—';

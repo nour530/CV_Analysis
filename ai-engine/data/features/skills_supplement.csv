@@ -1,0 +1,187 @@
+canonical_skill,skill_category,aliases,requires_context
+Java,programming_language,Java SE; Java EE; Jakarta EE; J2EE,false
+C++,programming_language,cpp,false
+PHP,programming_language,,false
+Python,programming_language,,false
+SQL,database,,false
+PL/SQL,database,PLSQL,false
+Transact-SQL,database,T-SQL,false
+HTML,framework_library,HTML5,false
+CSS,framework_library,CSS3; SCSS; SASS,false
+Angular,framework_library,AngularJS; Angular.js,false
+Spring Framework,framework_library,Spring; Spring MVC,true
+Laravel,framework_library,,false
+Symfony,framework_library,,false
+.NET,framework_library,dotnet; .NET Core; ASP.NET; ASP.NET Core,false
+Express.js,framework_library,ExpressJS,false
+NestJS,framework_library,Nest.js,false
+Next.js,framework_library,NextJS,false
+Flutter,framework_library,,false
+Hibernate,framework_library,,false
+Tailwind CSS,framework_library,Tailwind,false
+Bootstrap,framework_library,,true
+Oracle Database,database,Oracle DB; Oracle SQL,false
+MySQL,database,,false
+Microsoft SQL Server,database,SQL Server; MS SQL Server; MSSQL,false
+Elasticsearch,database,Elastic Search,false
+Amazon Web Services,tool_technology,AWS,false
+Microsoft Azure,tool_technology,Azure,false
+Google Cloud Platform,tool_technology,GCP; Google Cloud,false
+Terraform,tool_technology,,false
+Ansible,tool_technology,,false
+Jenkins,tool_technology,,false
+CI/CD,tool_technology,CI CD; continuous integration; continuous delivery; continuous deployment; intégration continue; déploiement continu,false
+DevOps,domain_knowledge,,false
+Microservices,domain_knowledge,microservice architecture; micro-services; architecture microservices,false
+RESTful API,tool_technology,REST API; REST APIs; RESTful APIs; RESTful services; API REST,false
+GraphQL,tool_technology,,false
+Apache Kafka,tool_technology,Kafka,false
+Apache Spark,tool_technology,Spark,true
+Hadoop,tool_technology,,false
+Apache Airflow,tool_technology,Airflow,false
+Atlassian JIRA,tool_technology,Jira,false
+Confluence,tool_technology,,false
+Figma,tool_technology,,false
+Adobe Photoshop,tool_technology,Photoshop,false
+Adobe Illustrator,tool_technology,Illustrator,false
+Microsoft Office,tool_technology,MS Office; Office 365; Microsoft 365; suite Office; Pack Office,false
+Microsoft Word,tool_technology,MS Word,false
+Microsoft PowerPoint,tool_technology,PowerPoint; MS PowerPoint,false
+Microsoft Excel,tool_technology,Excel; MS Excel; Advanced Excel; Excel avancé,false
+Microsoft Power BI,tool_technology,Power BI; PowerBI,false
+SAP ERP,tool_technology,SAP; SAP S/4HANA; S/4HANA; SAP ECC,false
+SAP FICO,tool_technology,SAP FI/CO; SAP FI; SAP CO,false
+SAP MM,tool_technology,,false
+SAP SD,tool_technology,,false
+SAP PP,tool_technology,,false
+ERP,tool_technology,ERP systems; progiciel de gestion intégré,false
+Salesforce,tool_technology,Salesforce CRM,false
+HubSpot,tool_technology,,false
+Odoo,tool_technology,OpenERP,false
+Sage,tool_technology,Sage Comptabilité; Sage 100,true
+AutoCAD,tool_technology,,false
+CATIA,tool_technology,CATIA V5,false
+SolidWorks,tool_technology,Solid Works,false
+MATLAB,tool_technology,Matlab Simulink; Simulink,false
+PLC programming,tool_technology,PLC; programmation automate; automates programmables; automate programmable; Siemens TIA Portal; TIA Portal,false
+Embedded systems,domain_knowledge,embedded software; systèmes embarqués; logiciel embarqué,false
+Linux administration,domain_knowledge,administration Linux,false
+Network administration,domain_knowledge,network engineering; administration réseau; administration des réseaux; réseaux informatiques,false
+System administration,domain_knowledge,systems administration; administration système; administration systèmes,false
+Cybersecurity,domain_knowledge,cyber security; information security; sécurité informatique; cybersécurité; sécurité des systèmes d'information,false
+Software testing,domain_knowledge,QA testing; software quality assurance; tests logiciels; test logiciel; recette fonctionnelle,false
+Test automation,domain_knowledge,automated testing; automatisation des tests; tests automatisés,false
+Software development,domain_knowledge,software engineering; développement logiciel; génie logiciel,false
+Web development,domain_knowledge,développement web,false
+Mobile development,domain_knowledge,mobile app development; développement mobile,false
+Full-stack development,domain_knowledge,full stack; fullstack; full-stack,false
+Data analysis,domain_knowledge,data analytics; analyse de données; analyse des données,false
+Data engineering,domain_knowledge,data pipelines; ingénierie des données,false
+Data science,domain_knowledge,science des données,false
+Machine learning,domain_knowledge,apprentissage automatique; ML models,false
+Deep learning,domain_knowledge,apprentissage profond,false
+Generative AI,domain_knowledge,GenAI; Gen AI; IA générative; large language models; LLM; LLMs,false
+Natural language processing,domain_knowledge,NLP; traitement automatique du langage,false
+Computer vision,domain_knowledge,vision par ordinateur,false
+Business intelligence,domain_knowledge,BI reporting; informatique décisionnelle,false
+Data visualization,domain_knowledge,data visualisation; dataviz; visualisation de données,false
+Data warehousing,domain_knowledge,data warehouse; entrepôt de données,false
+ETL,domain_knowledge,ETL processes; ELT,false
+Cloud computing,domain_knowledge,cloud infrastructure; cloud services,false
+UX design,domain_knowledge,user experience design; UX/UI; UI/UX; expérience utilisateur,false
+UI design,domain_knowledge,user interface design; interface utilisateur,false
+Agile,domain_knowledge,Agile methodology; Agile methodologies; méthodes agiles; méthodologie agile,false
+Scrum,domain_knowledge,Scrum Master,false
+Kanban,domain_knowledge,,false
+Project management,domain_knowledge,gestion de projet; gestion de projets; management de projet; conduite de projet; PMP,false
+Product management,domain_knowledge,product owner; gestion de produit,false
+Business analysis,domain_knowledge,business analyst; analyse métier; analyse fonctionnelle,false
+Change management,domain_knowledge,conduite du changement; gestion du changement,false
+Quality management,domain_knowledge,quality management system; QMS; management de la qualité; système de management de la qualité,false
+Quality assurance,domain_knowledge,assurance qualité,false
+Quality control,domain_knowledge,contrôle qualité; contrôle de la qualité,false
+ISO 9001,domain_knowledge,ISO9001,false
+ISO 14001,domain_knowledge,ISO14001,false
+ISO 45001,domain_knowledge,ISO45001,false
+IATF 16949,domain_knowledge,IATF16949; ISO/TS 16949,false
+Lean Manufacturing,domain_knowledge,Lean; Lean management; production lean,true
+Six Sigma,domain_knowledge,Lean Six Sigma; 6 Sigma; Green Belt; Black Belt,false
+Kaizen,domain_knowledge,amélioration continue; continuous improvement,false
+5S,domain_knowledge,,true
+FMEA,domain_knowledge,AMDEC; PFMEA; DFMEA; failure mode and effects analysis,false
+Statistical process control,domain_knowledge,SPC; MSP; maîtrise statistique des procédés,false
+8D problem solving,domain_knowledge,8D; 8D report,false
+Root cause analysis,domain_knowledge,RCA; analyse des causes; Ishikawa; 5 Why; 5 pourquoi,false
+PPAP,domain_knowledge,production part approval process,false
+APQP,domain_knowledge,advanced product quality planning,false
+Internal audit,domain_knowledge,audit interne; audits internes; quality audit; audit qualité,false
+Metrology,domain_knowledge,métrologie,false
+Production planning,domain_knowledge,planification de la production; planning de production; ordonnancement,false
+Production management,domain_knowledge,gestion de production; manufacturing operations,false
+Process engineering,domain_knowledge,ingénierie des procédés; ingénieur process; ingénieur méthodes,false
+Industrial engineering,domain_knowledge,génie industriel,false
+Maintenance,domain_knowledge,maintenance industrielle; industrial maintenance,true
+Preventive maintenance,domain_knowledge,maintenance préventive; TPM; total productive maintenance,false
+Electrical engineering,domain_knowledge,électrotechnique; génie électrique,false
+Mechanical engineering,domain_knowledge,génie mécanique; conception mécanique; mechanical design,false
+Wiring harness,domain_knowledge,câblage; faisceaux électriques; wire harness; cable harness,false
+Automotive industry,domain_knowledge,automotive; secteur automobile; industrie automobile,false
+Health and safety,domain_knowledge,HSE; QHSE; hygiène sécurité environnement; santé et sécurité au travail; occupational health and safety,false
+Supply chain management,domain_knowledge,supply chain; chaîne d'approvisionnement,false
+Logistics,domain_knowledge,logistique,false
+Inventory management,domain_knowledge,gestion des stocks; gestion de stock; stock management,false
+Warehouse management,domain_knowledge,gestion d'entrepôt; WMS; warehousing,false
+Procurement,domain_knowledge,purchasing; achats; approvisionnement; sourcing fournisseurs,false
+Import and export,domain_knowledge,import export; import-export; commerce international; international trade,false
+Accounting,domain_knowledge,comptabilité; comptabilité générale; bookkeeping; tenue de comptabilité,false
+Financial analysis,domain_knowledge,analyse financière,false
+Financial reporting,domain_knowledge,reporting financier; états financiers; financial statements,false
+Budgeting,domain_knowledge,budget planning; élaboration budgétaire; suivi budgétaire,false
+Management control,domain_knowledge,contrôle de gestion; controlling; financial controlling,false
+Auditing,domain_knowledge,audit financier; audit comptable; external audit; commissariat aux comptes,false
+Taxation,domain_knowledge,fiscalité; tax compliance; déclarations fiscales,false
+IFRS,domain_knowledge,normes IFRS,false
+Treasury management,domain_knowledge,trésorerie; gestion de trésorerie; cash management,false
+Payroll,domain_knowledge,paie; gestion de la paie,false
+Banking,domain_knowledge,banque; secteur bancaire,true
+Risk management,domain_knowledge,gestion des risques,false
+Compliance,domain_knowledge,conformité; regulatory compliance,true
+Recruitment,domain_knowledge,recrutement; talent acquisition; sourcing de candidats,false
+Human resources management,domain_knowledge,HR management; gestion des ressources humaines; GRH; ressources humaines,false
+Training and development,domain_knowledge,learning and development; L&D; formation professionnelle; gestion de la formation,false
+Labor law,domain_knowledge,employment law; droit du travail; droit social,false
+Sales,domain_knowledge,vente; ventes; commercial sales; technico-commercial,true
+B2B sales,domain_knowledge,B2B; vente B2B; business to business,false
+Business development,domain_knowledge,développement commercial; développement des affaires,false
+Account management,domain_knowledge,key account management; gestion de comptes; gestion de portefeuille clients; KAM,false
+Prospecting,domain_knowledge,prospection; prospection commerciale; lead generation; génération de leads; cold calling,false
+Negotiation,soft_skill,négociation; négociation commerciale,false
+Customer service,domain_knowledge,service client; customer support; support client; relation client,false
+Customer relationship management,domain_knowledge,CRM; gestion de la relation client; GRC,false
+Telemarketing,domain_knowledge,télémarketing; call center; centre d'appels; téléconseiller; teleprospecting,false
+Marketing,domain_knowledge,marketing strategy; stratégie marketing,true
+Digital marketing,domain_knowledge,marketing digital; marketing numérique; online marketing,false
+Social media marketing,domain_knowledge,social media; réseaux sociaux; community management; community manager,false
+Search engine optimization,domain_knowledge,SEO; référencement naturel,false
+Search engine marketing,domain_knowledge,SEM; Google Ads campaigns; référencement payant,false
+Content writing,domain_knowledge,copywriting; rédaction web; content creation; création de contenu,false
+Market research,domain_knowledge,étude de marché; études de marché,false
+E-commerce,domain_knowledge,ecommerce; commerce électronique,false
+Graphic design,domain_knowledge,design graphique; infographie,false
+Translation,domain_knowledge,traduction,true
+English,other,anglais; English language; fluent English; anglais courant,true
+French,other,français; French language; fluent French; français courant,true
+Arabic,other,arabe,true
+German,other,allemand,true
+Italian,other,italien,true
+Spanish,other,espagnol,true
+Communication,soft_skill,communication skills; compétences en communication; aisance relationnelle,false
+Teamwork,soft_skill,team player; travail en équipe; esprit d'équipe,false
+Leadership,soft_skill,team leadership; management d'équipe; team management; encadrement d'équipe,false
+Problem solving,soft_skill,problem-solving; résolution de problèmes,false
+Time management,soft_skill,gestion du temps,false
+Analytical skills,soft_skill,analytical thinking; esprit d'analyse; esprit analytique; capacité d'analyse,false
+Attention to detail,soft_skill,detail-oriented; rigueur; sens du détail,false
+Autonomy,soft_skill,autonomie; autonome; self-motivated,false
+Adaptability,soft_skill,adaptabilité; flexibility; capacité d'adaptation,false
+Organizational skills,soft_skill,sens de l'organisation; organisation skills,false

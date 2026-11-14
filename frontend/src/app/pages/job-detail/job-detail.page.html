@@ -5,11 +5,25 @@
   </a>
 
   <app-page-header
-    [eyebrow]="detail()?.job?.category || 'Job details'"
+    [eyebrow]="detail()?.job?.company || detail()?.job?.category || 'Job details'"
     [title]="detail()?.job?.title || 'Job details'"
     description="Review the role requirements and inspect how your CV fits before running a match."
   >
     @if (detail(); as loaded) {
+      <button type="button" class="btn btn--secondary" [disabled]="applications.isPending(loaded.job.job_id)" [attr.aria-pressed]="applications.isSaved(loaded.job.job_id)" (click)="toggleSave()">
+        <app-icon [name]="applications.isSaved(loaded.job.job_id) ? 'bookmark-filled' : 'bookmark'" [size]="16" />
+        {{ applications.isSaved(loaded.job.job_id) ? 'Saved' : 'Save job' }}
+      </button>
+      @if (loaded.job.apply_url) {
+        <a
+          class="btn btn--secondary"
+          [href]="loaded.job.apply_url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Apply on employer site
+        </a>
+      }
       <a
         class="btn btn--primary"
         routerLink="/matches"
@@ -38,6 +52,42 @@
   } @else if (detail(); as loaded) {
     <div class="job-detail-layout">
       <div class="stack">
+        <section class="card card--padded" aria-labelledby="job-ats-title">
+          <div class="card__header">
+            <div>
+              <p class="eyebrow">ATS check</p>
+              <h2 class="card__title" id="job-ats-title">Is your CV ready for this job?</h2>
+              <p class="card__subtitle">
+                Compares your latest CV with this posting's skills and checks how
+                an ATS would read it.
+              </p>
+            </div>
+            @if (!atsReport()) {
+              <button type="button" class="btn btn--primary btn--sm" [disabled]="atsLoading()" (click)="checkAts()">
+                <app-icon name="sparkle" [size]="15" />
+                {{ atsLoading() ? 'Checking…' : 'Check my CV for this job' }}
+              </button>
+            }
+          </div>
+          @if (atsError(); as problem) {
+            <div class="alert alert--error" role="alert">
+              <app-icon name="alert" [size]="18" />
+              <p>
+                {{ problem.status === 404 ? 'Analyse your CV first, then come back to this job.' : problem.message }}
+                @if (problem.status === 404) {
+                  <a class="link" routerLink="/cv">Add my CV</a>
+                }
+              </p>
+            </div>
+          }
+          @if (atsReport(); as report) {
+            <app-ats-report [report]="report" [compact]="true" />
+            <a class="btn btn--secondary btn--sm" routerLink="/editor" [queryParams]="{ jobId: loaded.job.job_id }">
+              Tailor my CV for this job
+            </a>
+          }
+        </section>
+
         <section class="card card--padded">
           <h2 class="card__title">Role overview</h2>
           <p class="job-description">{{ loaded.description }}</p>
@@ -81,13 +131,45 @@
         <section class="card card--padded">
           <h2 class="card__title">At a glance</h2>
           <dl class="meta-list">
+            @if (loaded.job.company) {
+              <div>
+                <dt>Company</dt>
+                <dd>{{ loaded.job.company }}</dd>
+              </div>
+            }
+            @if (loaded.job.location) {
+              <div>
+                <dt>Location</dt>
+                <dd>{{ loaded.job.location }}</dd>
+              </div>
+            }
+            @if (workplaceLabel(loaded.job.workplace); as mode) {
+              <div>
+                <dt>Work mode</dt>
+                <dd>{{ mode }}</dd>
+              </div>
+            }
+            @if (loaded.job.employment_type) {
+              <div>
+                <dt>Contract</dt>
+                <dd>{{ loaded.job.employment_type }}</dd>
+              </div>
+            }
+            @if (loaded.job.salary) {
+              <div>
+                <dt>Salary</dt>
+                <dd>{{ loaded.job.salary }}</dd>
+              </div>
+            }
+            @if (postedAgo(loaded.job.posted_at); as ago) {
+              <div>
+                <dt>Posted</dt>
+                <dd>{{ ago }}</dd>
+              </div>
+            }
             <div>
               <dt>Category</dt>
               <dd>{{ loaded.job.category || 'Uncategorised' }}</dd>
-            </div>
-            <div>
-              <dt>Job ID</dt>
-              <dd>{{ loaded.job.job_id }}</dd>
             </div>
             <div>
               <dt>Required skills</dt>
@@ -134,10 +216,16 @@
 
         <div class="alert alert--info">
           <app-icon name="info" [size]="18" />
-          <p>
-            This catalog does not include a company field, so no company is shown.
-            Scores are produced by the backend matching service.
-          </p>
+          @if (loaded.job.source_label) {
+            <p>
+              Published by the employer via {{ loaded.job.source_label }}. Apply on
+              the employer's site; JobMatch AI does not submit applications.
+            </p>
+          } @else {
+            <p>
+              This is a sample role used for demonstration.
+            </p>
+          }
         </div>
       </aside>
     </div>

@@ -2,7 +2,7 @@
   <app-page-header
     eyebrow="Account"
     title="Settings"
-    description="Manage your account, matching preferences, privacy choices, and saved workspace data."
+    description="Your account, job preferences and privacy choices."
   />
 
   @if (feedback()) {
@@ -72,8 +72,8 @@
             <p class="eyebrow">Matching</p>
             <h2 class="card__title">Recommendation preferences</h2>
             <p class="card__subtitle">
-              These values are saved to your account and sent to the recommendation
-              endpoint. They do not change how scores are calculated.
+              Choose how many job suggestions you see. This does not change how
+              well a job matches your CV.
             </p>
           </div>
         </div>
@@ -81,7 +81,7 @@
         <form class="stack preferences-form" [formGroup]="form" (ngSubmit)="savePreferences()" novalidate>
           <div class="form-grid">
             <div class="field">
-              <label for="recommendation-limit">Recommendations to return</label>
+              <label for="recommendation-limit">Job suggestions to show</label>
               <input
                 id="recommendation-limit"
                 class="input"
@@ -97,7 +97,7 @@
             </div>
 
             <div class="field">
-              <label for="candidate-pool">Candidate pool size</label>
+              <label for="candidate-pool">Jobs to compare with your CV</label>
               <input
                 id="candidate-pool"
                 class="input"
@@ -106,7 +106,7 @@
                 max="200"
                 formControlName="candidatePoolSize"
               />
-              <span class="hint">Allowed range: 1–200 jobs to evaluate.</span>
+              <span class="hint">Between 1 and 200. More jobs means broader suggestions.</span>
               @if (form.controls.candidatePoolSize.invalid && form.controls.candidatePoolSize.touched) {
                 <span class="field-error">Enter a number from 1 to 200.</span>
               }
@@ -207,61 +207,7 @@
     </div>
 
     <div class="stack">
-      <section class="card card--padded">
-        <div class="card__header">
-          <div>
-            <p class="eyebrow">Connection</p>
-            <h2 class="card__title">Backend API</h2>
-          </div>
-          @if (health()) {
-            <span class="tag tag--success">Online</span>
-          } @else if (connectionError()) {
-            <span class="tag tag--danger">Offline</span>
-          }
-        </div>
-
-        <div class="code-block">
-          <span class="muted small">Base URL</span>
-          <code>{{ apiBaseUrl }}</code>
-        </div>
-
-        <p class="muted small">
-          The URL is configured through <code>src/environments/environment.ts</code>.
-          Access tokens are held in memory and refresh tokens use an HttpOnly cookie.
-        </p>
-
-        @if (health(); as healthResponse) {
-          <div class="connection-result">
-            <strong>{{ healthResponse.service }} v{{ healthResponse.version }}</strong>
-            <span>Status: {{ healthResponse.status }}</span>
-            @if (checkedAt()) {
-              <span>Checked {{ formatDateTime(checkedAt()) }}</span>
-            }
-          </div>
-        }
-
-        @if (connectionError(); as apiError) {
-          <div class="alert alert--error" role="alert">
-            <app-icon name="alert" [size]="18" />
-            <p>{{ apiError.message }}</p>
-          </div>
-        }
-
-        <button
-          type="button"
-          class="btn btn--secondary btn--sm"
-          [disabled]="checkingConnection()"
-          (click)="checkConnection()"
-        >
-          @if (checkingConnection()) {
-            <span class="spinner spinner--dark" aria-hidden="true"></span>
-            Checking…
-          } @else {
-            <app-icon name="refresh" [size]="15" />
-            Test connection
-          }
-        </button>
-      </section>
+      
 
       <section class="card card--padded">
         <div class="card__header">
@@ -317,19 +263,19 @@
       <div class="card__header">
         <div>
           <p class="eyebrow">AI privacy</p>
-          <h2 class="card__title">Optional explanations</h2>
+          <h2 class="card__title">How AI features use your data</h2>
         </div>
         <span class="tag tag--warning">Opt-in only</span>
       </div>
       <p class="muted small settings-copy">
-        Remote AI explanations require all of the following: the request flag
-        <code>include_llm</code>, explicit consent through
-        <code>allow_remote_analysis</code>, and the server setting
-        <code>ALLOW_REMOTE_LLM_ANALYSIS=true</code>.
+        AI features are off until you turn on remote AI analysis above. When
+        they are on, the CV builder sends your summary and bullet points (never
+        your contact details) to the AI provider, and match explanations send
+        the CV and job text.
       </p>
       <p class="muted small settings-copy">
-        If any requirement is missing, the app keeps the local deterministic score
-        and shows no AI explanation. No API keys are present in Angular.
+        Your ATS score and job match scores are always calculated on our server
+        and never depend on the AI.
       </p>
     </section>
 
@@ -337,14 +283,14 @@
       <div class="card__header">
         <div>
           <p class="eyebrow">Security</p>
-          <h2 class="card__title">Authenticated account</h2>
+          <h2 class="card__title">Your account is protected</h2>
         </div>
         <span class="tag tag--success">Protected</span>
       </div>
       <p class="muted small settings-copy">
-        CV analysis, matching, history, and account settings require a signed-in
-        user. Passwords are stored as Argon2id hashes, access tokens stay in memory,
-        and refresh tokens use HttpOnly SameSite cookies with CSRF protection.
+        Only you can see your CV, scores and applications. Your password is never
+        stored in readable form, and you stay signed in with a secure cookie that
+        websites cannot read.
       </p>
     </section>
   </div>

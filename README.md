@@ -1,6 +1,20 @@
-# CV_Analysis
+# CV_Analysis (JobMatch AI)
 
-AI-powered CV and job matching using NLP and Machine Learning.
+ATS CV checker, CV builder and job matching for job seekers in Tunisia.
+
+- **ATS check:** upload a PDF, Word or text CV (English or French) and get a
+  0–100 score with a fix for every problem (`ai-engine/docs/ats-check.md`).
+- **CV builder:** edit section by section with a live preview, accept or reject
+  improvement suggestions (rule-based, plus optional AI rewrites that flag
+  anything not in your CV), download ATS-safe Word or PDF
+  (`ai-engine/docs/cv-builder.md`).
+- **Real jobs:** current openings published by employers in Tunisia plus remote
+  roles, synced every 6 hours, each with a match score for your CV
+  (`ai-engine/docs/real-jobs.md`).
+- **Application tracker:** save jobs and move them from Saved to Applied,
+  Interview and Offer.
+- Public landing page, guided dashboard, light and dark themes, responsive
+  layout down to phone width.
 
 ## Backend API
 
@@ -62,9 +76,20 @@ and Redis when configured: `GET /health/ready`. Readiness returns `503` when a
 required dependency is unavailable. The same routes are available under
 `/api/v1/health` for compatibility.
 
+### 4. Load real jobs
+
+```bash
+venv/Scripts/python.exe -m app.cli sync-jobs
+```
+
+This fetches current Tunisian job postings from the employer job-board APIs
+listed in `ai-engine/data/job_sources.json` (SmartRecruiters, Recruitee, Lever,
+Ashby, plus remote jobs from Remotive). Until the first sync, the API falls back
+to the research dataset. See `ai-engine/docs/real-jobs.md`.
+
 ## Docker Compose deployment
 
-A production-like stack is defined in `docker-compose.yml`: PostgreSQL, Redis,
+A production-like stack is defined in `docker-compose.yml`: PostgreSQL, Redis, a job-sync worker that refreshes real job postings every 6 hours,
 a one-shot migration service, the backend, and nginx serving the Angular build.
 PostgreSQL and Redis use persistent volumes, and only the frontend port is
 published. Copy `.env.example` to `.env`, set `APP_ENV=production`, replace

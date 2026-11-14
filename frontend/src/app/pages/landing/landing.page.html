@@ -1,0 +1,144 @@
+<a class="skip-link" href="#landing-main">Skip to content</a>
+<header class="lp-nav">
+  <a class="lp-brand" routerLink="/" aria-label="JobMatch AI home">
+    <span class="lp-brand__mark" aria-hidden="true">JM</span>
+    <span>JobMatch AI</span>
+  </a>
+  <nav class="lp-nav__links" aria-label="Page sections">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#privacy">Privacy</a>
+  </nav>
+  <div class="lp-nav__actions">
+    <button type="button" class="btn btn--ghost btn--icon" (click)="theme.cycle()" [attr.aria-label]="theme.label() + '. Change theme'" [attr.title]="theme.label()">
+      @switch (theme.choice()) {
+        @case ('light') { <app-icon name="sun" [size]="19" /> }
+        @case ('dark') { <app-icon name="moon" [size]="19" /> }
+        @default { <app-icon name="monitor" [size]="19" /> }
+      }
+    </button>
+    <a class="btn btn--ghost btn--sm" routerLink="/login">Sign in</a>
+    <a class="btn btn--primary btn--sm" routerLink="/register">Get started</a>
+  </div>
+</header>
+
+<main id="landing-main" tabindex="-1">
+  <section class="lp-hero">
+    <div class="lp-hero__copy">
+      <p class="lp-eyebrow">For job seekers in Tunisia</p>
+      <h1>Get your CV past the robots and in front of recruiters.</h1>
+      <p class="lp-lead">
+        Upload your CV and get an ATS score with a fix for every problem. Improve it
+        with AI that sticks to your facts, then apply to real jobs from employers hiring
+        in Tunisia.
+      </p>
+      <div class="lp-cta">
+        <a class="btn btn--primary lp-cta__main" routerLink="/register">
+          Check my CV for free
+          <app-icon name="arrow-right" [size]="17" />
+        </a>
+        <a class="btn btn--secondary" routerLink="/login">I already have an account</a>
+      </div>
+      @if (liveJobs(); as jobs) {
+        <p class="lp-proof">
+          <span class="lp-proof__dot" aria-hidden="true"></span>
+          <span><strong>{{ jobs.total | number }}</strong> open roles from
+          <strong>{{ jobs.companies.length }}</strong> employers right now{{ topCities().length ? ', in ' + topCities().join(', ') + ' and more' : '' }}</span>
+        </p>
+      } @else {
+        <p class="lp-proof">Free · English and French CVs · PDF, Word or text</p>
+      }
+    </div>
+
+    <div class="lp-hero__visual" aria-hidden="true">
+      <div class="lp-mock">
+        <div class="lp-mock__head">
+          <app-score-ring [score]="0.87" caption="ATS score" tone="strong" />
+          <div>
+            <span class="lp-chip lp-chip--good">Good</span>
+            <p>Your CV should parse well. 2 quick improvements:</p>
+          </div>
+        </div>
+        <ul class="lp-mock__checks">
+          <li class="ok"><span>✓</span> Text readable by ATS</li>
+          <li class="ok"><span>✓</span> Experience, Education, Skills found</li>
+          <li class="warn"><span>!</span> Add figures to 3 achievements</li>
+          <li class="warn"><span>!</span> Missing for this job: SAP, Power BI</li>
+        </ul>
+        <div class="lp-mock__rewrite">
+          <p class="lp-mock__label">AI suggestion</p>
+          <p class="lp-mock__old">Responsible for monthly reports</p>
+          <p class="lp-mock__new">Automated monthly reporting for [N] managers, cutting prep time by [X%]</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (topCompanies().length) {
+    <section class="lp-logos" aria-label="Employers with open roles">
+      <p>Employers with open roles right now</p>
+      <ul>
+        @for (company of topCompanies(); track company) {
+          <li>{{ company }}</li>
+        }
+      </ul>
+    </section>
+  }
+
+  <section id="how" class="lp-section" aria-labelledby="how-title">
+    <p class="lp-eyebrow">How it works</p>
+    <h2 id="how-title">From CV to interview in four steps</h2>
+    <ol class="lp-steps">
+      @for (step of steps; track step.title; let i = $index) {
+        <li>
+          <span class="lp-steps__num">{{ i + 1 }}</span>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.text }}</p>
+        </li>
+      }
+    </ol>
+  </section>
+
+  <section id="features" class="lp-section" aria-labelledby="features-title">
+    <p class="lp-eyebrow">Features</p>
+    <h2 id="features-title">Everything you need to land the interview</h2>
+    <div class="lp-features">
+      @for (feature of features; track feature.title) {
+        <article class="lp-feature">
+          <span class="lp-feature__icon"><app-icon [name]="feature.icon" [size]="20" /></span>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.text }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section id="privacy" class="lp-section lp-privacy" aria-labelledby="privacy-title">
+    <div>
+      <p class="lp-eyebrow">Privacy</p>
+      <h2 id="privacy-title">Your CV is yours</h2>
+      <p class="lp-lead">We built JobMatch AI so you never have to trade your personal data for a better CV.</p>
+    </div>
+    <ul class="lp-privacy__list">
+      <li><app-icon name="shield" [size]="18" /> Uploaded files are read and discarded; only the text is kept in your account.</li>
+      <li><app-icon name="shield" [size]="18" /> AI features are off until you turn them on in Settings, and CV rewrites never include your contact details.</li>
+      <li><app-icon name="shield" [size]="18" /> Delete your CV history at any time from Settings.</li>
+      <li><app-icon name="shield" [size]="18" /> The ATS check and job matching run on our server, not in a third-party AI.</li>
+    </ul>
+  </section>
+
+  <section class="lp-final">
+    <h2>Ready to see your ATS score?</h2>
+    <p>It takes about 30 seconds. No credit card, no spam.</p>
+    <a class="btn btn--primary lp-cta__main" routerLink="/register">
+      Check my CV for free
+      <app-icon name="arrow-right" [size]="17" />
+    </a>
+  </section>
+</main>
+
+<footer class="lp-footer">
+  <span>© JobMatch AI</span>
+  <span>Job listings are published by the employers; apply on their sites.</span>
+  <a routerLink="/login">Sign in</a>
+</footer>

@@ -4,12 +4,16 @@ import csv
 import re
 import threading
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from app.schemas.hybrid_match import JobProfile, JobRequirement
 from app.services.nlp.embeddings import LocalTfidfEmbedder
-from app.services.nlp.skills import LocalSkillExtractor, normalize_skill_key
+from app.services.nlp.skills import LocalSkillExtractor, normalize_skill_key, strip_accents
+
+if TYPE_CHECKING:
+    from app.db.models import JobPosting
 
 DEFAULT_RESPONSIBILITY_LIMIT = 100
 DEFAULT_SKILL_LIMIT = 500
@@ -76,6 +80,18 @@ class CatalogJob:
     required_keys: frozenset[str] = field(default_factory=frozenset)
     preferred_keys: frozenset[str] = field(default_factory=frozenset)
     search_text: str = field(default="", repr=False)
+    company: str | None = None
+    company_logo_url: str | None = None
+    location: str | None = None
+    city: str | None = None
+    country_code: str | None = None
+    workplace: str | None = None
+    employment_type: str | None = None
+    experience_level: str | None = None
+    salary_text: str | None = None
+    apply_url: str | None = None
+    posted_at: datetime | None = None
+    source: str = "dataset"
 
     @property
     def description_excerpt(self) -> str:
@@ -125,10 +141,66 @@ class JobCatalog:
         if self._embedder is None:
             with self._embedder_lock:
                 if self._embedder is None:
-                    self._embedder = LocalTfidfEmbedder().fit(
-                        self.reference_corpus()
-                    )
+                    corpus = self.reference_corpus()
+                    embedder = LocalTfidfEmbedder()
+                    self._embedder = embedder.fit(corpus) if corpus else embedder
         return self._embedder
+
+    @classmethod
+    def from_postings(
+        cls,
+        postings: Iterable[JobPosting],
+        *,
+        extractor: LocalSkillExtractor | None = None,
+    ) -> JobCatalog:
+        """Build a catalog from synchronised real job postings."""
+        skill_extractor = extractor or LocalSkillExtractor()
+        jobs: list[CatalogJob] = []
+        for row in postings:
+            required = _canonical_skill_list(row.required_skills or [], skill_extractor)
+            preferred = _canonical_skill_list(row.preferred_skills or [], skill_extractor)
+            other = _canonical_skill_list(row.other_skills or [], skill_extractor)
+            search_text = WHITESPACE_PATTERN.sub(
+                " ",
+                " ".join(
+                    part
+                    for part in (
+                        row.title, row.company, row.location, row.category,
+                        row.description, " ".join(required + preferred + other),
+                    )
+                    if part
+                ),
+            ).casefold()
+            jobs.append(
+                CatalogJob(
+                    job_id=row.id,
+                    title=row.title,
+                    category=row.category,
+                    description=row.description,
+                    required_skills=required,
+                    preferred_skills=preferred,
+                    other_skills=other,
+                    skill_keys=frozenset(
+                        normalize_skill_key(skill) for skill in required + preferred + other
+                    ),
+                    required_keys=frozenset(normalize_skill_key(s) for s in required),
+                    preferred_keys=frozenset(normalize_skill_key(s) for s in preferred),
+                    search_text=search_text,
+                    company=row.company,
+                    company_logo_url=row.company_logo_url,
+                    location=tidy_location(row.location),
+                    city=row.city,
+                    country_code=row.country_code,
+                    workplace=row.workplace,
+                    employment_type=row.employment_type,
+                    experience_level=row.experience_level,
+                    salary_text=row.salary_text,
+                    apply_url=row.apply_url,
+                    posted_at=row.posted_at,
+                    source=row.source,
+                )
+            )
+        return cls(jobs, extractor=skill_extractor)
 
     @classmethod
     def from_csv(
@@ -303,16 +375,75 @@ class JobCatalog:
         query: str | None = None,
         offset: int = 0,
         limit: int = 50,
+        workplace: str | None = None,
+        location: str | None = None,
+        company: str | None = None,
     ) -> tuple[list[CatalogJob], int]:
         category_key = category.strip().casefold() if category else None
-        query_key = query.strip().casefold() if query else None
+        query_terms = query.strip().casefold().split() if query else []
+        workplace_key = workplace.strip().casefold() if workplace else None
+        location_pattern = (
+            re.compile(rf"(?<!\w){re.escape(location.strip().casefold())}(?!\w)")
+            if location and location.strip()
+            else None
+        )
+        company_key = company.strip().casefold() if company else None
         filtered = [
             job
             for job in self._jobs.values()
             if (category_key is None or (job.category or "").casefold() == category_key)
-            and (query_key is None or query_key in job.search_text)
+            and all(term in job.search_text for term in query_terms)
+            and (workplace_key is None or (job.workplace or "").casefold() == workplace_key)
+            and (
+                location_pattern is None
+                or location_pattern.search((job.location or "").casefold()) is not None
+                or location_pattern.search((job.city or "").casefold()) is not None
+            )
+            and (company_key is None or (job.company or "").casefold() == company_key)
         ]
         return filtered[offset : offset + limit], len(filtered)
+
+    def facets(self) -> dict[str, list[tuple[str, int]]]:
+        """Return value counts for filterable fields, most common first."""
+        counters: dict[str, dict[str, int]] = {
+            "categories": {}, "cities": {}, "companies": {}, "workplaces": {},
+        }
+        for job in self._jobs.values():
+            for name, value in (
+                ("categories", job.category),
+                ("cities", job.city),
+                ("companies", job.company),
+                ("workplaces", job.workplace),
+            ):
+                if value:
+                    counters[name][value] = counters[name].get(value, 0) + 1
+        return {
+            name: sorted(values.items(), key=lambda item: (-item[1], item[0]))[:100]
+            for name, values in counters.items()
+        }
+
+
+_COUNTRY_ALIASES = {"tunisie": "tunisia"}
+
+
+def tidy_location(value: str | None) -> str | None:
+    """Drop repeated parts such as "Tunis, Tunis, Tunisia" or "Tunisie, Tunisia"."""
+    if not value:
+        return value
+    kept: list[str] = []
+    seen: set[str] = set()
+    for part in (piece.strip() for piece in value.split(",")):
+        if not part:
+            continue
+        key = strip_accents(part).casefold().replace(" governorate", "").strip()
+        if key in _COUNTRY_ALIASES:
+            key = _COUNTRY_ALIASES[key]
+            part = key.title()
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(part)
+    return ", ".join(kept) or None
 
 
 def _canonical_skill_list(

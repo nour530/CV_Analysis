@@ -1,16 +1,15 @@
 <div class="page">
   <app-page-header
-    eyebrow="Catalog"
-    title="Job Explorer"
-    description="Search the role catalog, filter by category, and inspect the requirements behind each match."
+    [title]="liveCatalog() ? 'Jobs in Tunisia' : 'Job Explorer'"
+    [description]="liveCatalog() ? liveDescription : datasetDescription"
   >
     <a class="btn btn--secondary" routerLink="/cv">
       <app-icon name="cv" [size]="17" />
       Update CV
     </a>
-    <a class="btn btn--primary" routerLink="/matches">
-      <app-icon name="matches" [size]="17" />
-      My matches
+    <a class="btn btn--primary" routerLink="/applications">
+      <app-icon name="bookmark" [size]="17" />
+      Saved jobs ({{ applications.items().length }})
     </a>
   </app-page-header>
 
@@ -24,7 +23,7 @@
             class="input"
             type="search"
             formControlName="q"
-            placeholder="Title, category, or description"
+            placeholder="Job title, company, or skill"
             maxlength="200"
           />
         </div>
@@ -45,6 +44,30 @@
             }
           </datalist>
         </div>
+        @if (cityOptions().length) {
+          <div class="field">
+            <label for="job-location">City</label>
+            <select id="job-location" class="input" formControlName="location">
+              <option value="">All cities</option>
+              @for (city of cityOptions(); track city.value) {
+                <option [value]="city.value">{{ city.value }} ({{ city.count }})</option>
+              }
+            </select>
+          </div>
+        }
+        @if (workplaceOptions().length) {
+          <div class="field">
+            <label for="job-workplace">Work mode</label>
+            <select id="job-workplace" class="input" formControlName="workplace">
+              <option value="">Any</option>
+              @for (mode of workplaceOptions(); track mode.value) {
+                <option [value]="mode.value">
+                  {{ workplaceLabel(mode.value) }} ({{ mode.count }})
+                </option>
+              }
+            </select>
+          </div>
+        }
         <button type="submit" class="btn btn--primary">
           <app-icon name="search" [size]="16" />
           Search
@@ -54,9 +77,6 @@
         </button>
       </div>
 
-      <span class="hint toolbar__hint">
-        Category uses an exact, case-insensitive match in the API.
-      </span>
     </form>
   </section>
 
@@ -71,8 +91,8 @@
   } @else if (loading()) {
     <app-state-panel
       variant="loading"
-      title="Loading job catalog"
-      message="The first catalog request can take a few seconds while the backend warms up."
+      title="Loading jobs"
+      message="Fetching the latest openings…"
     />
   } @else if (!jobs().length) {
     <app-state-panel
@@ -95,8 +115,29 @@
       @for (job of jobs(); track job.job_id) {
         <article class="card card--padded card--interactive job-card">
           <div class="job-card__top">
-            <span class="tag tag--accent">{{ job.category || 'Uncategorised' }}</span>
-            <span class="job-id">#{{ job.job_id }}</span>
+            @if (job.company) {
+              <span class="job-card__company">{{ job.company }}</span>
+            } @else {
+              <span class="tag tag--accent">{{ job.category || 'Uncategorised' }}</span>
+            }
+            <span class="job-card__top-actions">
+              @if (matchPercent(job.job_id); as percent) {
+                <span class="match-badge match-badge--{{ matchTone(percent) }}" [attr.aria-label]="percent + '% match with your CV'">
+                  {{ percent }}% match
+                </span>
+              }
+              <button
+                type="button"
+                class="save-btn"
+                [class.is-saved]="applications.isSaved(job.job_id)"
+                [disabled]="applications.isPending(job.job_id)"
+                [attr.aria-pressed]="applications.isSaved(job.job_id)"
+                [attr.aria-label]="(applications.isSaved(job.job_id) ? 'Remove from saved jobs: ' : 'Save job: ') + (job.title || 'this job')"
+                (click)="toggleSave(job)"
+              >
+                <app-icon [name]="applications.isSaved(job.job_id) ? 'bookmark-filled' : 'bookmark'" [size]="17" />
+              </button>
+            </span>
           </div>
 
           <h2>
@@ -104,6 +145,23 @@
               {{ job.title || 'Untitled role' }}
             </a>
           </h2>
+
+          @if (job.location || job.workplace || job.posted_at) {
+            <p class="job-card__meta">
+              @if (postedAgo(job.posted_at); as ago) {
+                <span class="job-card__date">{{ ago }}</span>
+              }
+              @if (job.location) {
+                <span>{{ job.city || job.location }}</span>
+              }
+              @if (workplaceLabel(job.workplace); as mode) {
+                <span class="tag tag--neutral">{{ mode }}</span>
+              }
+              @if (job.employment_type) {
+                <span class="tag tag--neutral">{{ job.employment_type }}</span>
+              }
+            </p>
+          }
 
           <p class="job-card__excerpt">{{ job.description_excerpt }}</p>
 
@@ -118,12 +176,28 @@
                 </span>
               }
             </div>
+          } @else if (job.preferred_skills.length) {
+            <div class="chip-list" aria-label="Skills">
+              @for (skill of job.preferred_skills.slice(0, 5); track skill) {
+                <span class="tag">{{ skill }}</span>
+              }
+            </div>
           } @else {
-            <p class="muted small">No required skills listed.</p>
+            <p class="muted small">No skills detected in this posting.</p>
           }
 
           <div class="card__footer job-card__footer">
-            <a class="link" [routerLink]="['/jobs', job.job_id]">View role</a>
+            @if (job.apply_url) {
+              <a
+                class="link"
+                [href]="job.apply_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="'Apply to ' + (job.title || 'this job') + ' on the employer site (opens in a new tab)'"
+              >Apply</a>
+            } @else {
+              <a class="link" [routerLink]="['/jobs', job.job_id]">View role</a>
+            }
             <a
               class="btn btn--secondary btn--sm"
               routerLink="/matches"

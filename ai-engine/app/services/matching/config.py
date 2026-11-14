@@ -119,10 +119,30 @@ class MatchingConfig(StrictSchema):
     )
     thresholds: MatchThresholds = Field(default_factory=MatchThresholds)
     category_mapping: dict[str, list[str]] = Field(default_factory=dict)
+    # Generic skills appear in most CVs and job ads, so they carry less weight
+    # than technical or domain skills. Spoken languages are listed by skill key
+    # because their category ("other") is shared with unclassified skills.
+    skill_category_weights: dict[str, float] = Field(
+        default_factory=lambda: {"soft_skill": 0.25}
+    )
+    generic_skill_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            key: 0.5
+            for key in ("english", "french", "arabic", "german", "italian", "spanish")
+        }
+    )
     minimum_experience_similarity: float = Field(default=0.15, ge=0.0, le=1.0)
     max_experience_evidence: int = Field(default=3, ge=0, le=20)
     fairness_notice: str = Field(default=DEFAULT_FAIRNESS_NOTICE, min_length=1, max_length=2000)
     disclaimer: str = Field(default=DEFAULT_DISCLAIMER, min_length=1, max_length=2000)
+
+    def skill_weight(self, category: str | None, skill: str | None = None) -> float:
+        if skill:
+            key = "".join(ch for ch in skill.casefold() if ch.isalnum())
+            if key in self.generic_skill_weights:
+                return min(1.0, max(0.0, float(self.generic_skill_weights[key])))
+        value = self.skill_category_weights.get(category or "", 1.0)
+        return min(1.0, max(0.0, float(value)))
 
     def category_is_compatible(
         self, resume_category: str | None, job_category: str | None

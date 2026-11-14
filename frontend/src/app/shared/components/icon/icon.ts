@@ -20,7 +20,15 @@ export type IconName =
   | 'chevron-left'
   | 'chevron-right'
   | 'info'
-  | 'sparkle';
+  | 'sparkle'
+  | 'edit'
+  | 'bookmark'
+  | 'bookmark-filled'
+  | 'sun'
+  | 'moon'
+  | 'monitor'
+  | 'target'
+  | 'trash';
 
 const ICON_PATHS: Record<IconName, string[]> = {
   dashboard: [
@@ -61,6 +69,18 @@ const ICON_PATHS: Record<IconName, string[]> = {
     'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
     'M18 16l.7 1.8 1.8.7-1.8.7L18 21l-.7-1.8-1.8-.7 1.8-.7z',
   ],
+  edit: ['M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z', 'M13.5 6.5l4 4'],
+  bookmark: ['M6.5 3.5h11v17L12 16.5l-5.5 4z'],
+  'bookmark-filled': ['M6.5 3.5h11v17L12 16.5l-5.5 4z', 'M9 7h6', 'M9 10h6'],
+  sun: [
+    'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z',
+    'M12 2.5v2', 'M12 19.5v2', 'M2.5 12h2', 'M19.5 12h2',
+    'M5.3 5.3l1.4 1.4', 'M17.3 17.3l1.4 1.4', 'M5.3 18.7l1.4-1.4', 'M17.3 6.7l1.4-1.4',
+  ],
+  moon: ['M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z'],
+  monitor: ['M3.5 5h17v11h-17z', 'M9 20h6', 'M12 16v4'],
+  target: ['M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z', 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z', 'M12 11.5v1'],
+  trash: ['M4.5 7h15', 'M9.5 7V4.5h5V7', 'M6.5 7l1 13h9l1-13', 'M10.5 11v5', 'M13.5 11v5'],
 };
 
 @Component({

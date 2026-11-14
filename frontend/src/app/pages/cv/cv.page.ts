@@ -1,4 +1,3 @@
-import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,9 +13,8 @@ import {
 import { JobMatchApiService } from '../../core/api.service';
 import { formatDate, skillCategoryLabel } from '../../core/formatters';
 import { WorkspaceStore } from '../../core/workspace.store';
+import { AtsReportComponent } from '../../shared/components/ats-report/ats-report';
 import { IconComponent } from '../../shared/components/icon/icon';
-import { PageHeaderComponent } from '../../shared/components/page-header/page-header';
-import { StatePanelComponent } from '../../shared/components/state-panel/state-panel';
 
 type InputMode = 'paste' | 'upload';
 
@@ -43,12 +41,10 @@ const ACCEPT_ATTRIBUTE = [
   selector: 'app-cv-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DecimalPipe,
     ReactiveFormsModule,
     RouterLink,
+    AtsReportComponent,
     IconComponent,
-    PageHeaderComponent,
-    StatePanelComponent,
   ],
   templateUrl: './cv.page.html',
   styleUrl: './cv.page.css',
@@ -65,7 +61,9 @@ export class CvPage {
     category: ['', [Validators.maxLength(120)]],
   });
 
-  readonly mode = signal<InputMode>('paste');
+  readonly mode = signal<InputMode>('upload');
+  readonly showUploader = signal(false);
+  readonly dragging = signal(false);
   readonly selectedFile = signal<File | null>(null);
   readonly fileError = signal('');
   readonly loading = signal(false);
@@ -128,6 +126,35 @@ export class CvPage {
 
     this.fileError.set('');
     this.selectedFile.set(file);
+    // One step: choosing or dropping a file starts the check right away.
+    this.submitUpload();
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (!this.loading()) {
+      this.dragging.set(true);
+    }
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragging.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (!file || this.loading()) {
+      return;
+    }
+    this.apiError.set(null);
+    this.successMessage.set('');
+    const validationError = validateFile(file);
+    if (validationError) {
+      this.selectedFile.set(null);
+      this.fileError.set(validationError);
+      return;
+    }
+    this.fileError.set('');
+    this.selectedFile.set(file);
+    this.submitUpload();
   }
 
   submitPaste(): void {
@@ -163,7 +190,7 @@ export class CvPage {
     this.successMessage.set('');
 
     if (!file) {
-      this.fileError.set('Choose a TXT, PDF, or DOCX CV file to continue.');
+      this.fileError.set('Choose a PDF, Word or text file to continue.');
       return;
     }
 
@@ -307,7 +334,12 @@ export class CvPage {
       detail: `${response.skill_count} skills extracted · ${response.profile.category || 'category not set'}`,
     });
     this.loading.set(false);
-    this.successMessage.set(response.message);
+    this.showUploader.set(false);
+    this.successMessage.set(
+      response.ats
+        ? `Done! Your ATS score is ${response.ats.score}/100. See what to fix below.`
+        : response.message,
+    );
   }
 
   private onAnalysisError(error: unknown): void {
@@ -332,7 +364,7 @@ function validateFile(file: File): string {
   );
 
   if (!extensionAccepted) {
-    return 'Use a TXT, PDF, or DOCX CV. Legacy .text, .md, and .csv text files are also accepted.';
+    return 'Please use a PDF, Word (.docx) or text file (TXT, PDF, or DOCX).';
   }
 
   if (file.size > MAX_FILE_BYTES) {

@@ -15,6 +15,8 @@ class APIConfigurationError(RuntimeError):
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_JOBS_FEATURES_PATH = AI_ENGINE_DIR / "data" / "features" / "job_features.csv"
+DEFAULT_JOB_SOURCES_PATH = AI_ENGINE_DIR / "data" / "job_sources.json"
+JOB_CATALOG_SOURCES = ("auto", "database", "dataset")
 
 AppEnvironment = Literal["development", "test", "production"]
 RateLimitBackendName = Literal["memory", "redis"]
@@ -206,6 +208,9 @@ class APISettings:
     app_env: AppEnvironment = "development"
     api_prefix: str = "/api/v1"
     jobs_features_path: Path = DEFAULT_JOBS_FEATURES_PATH
+    jobs_catalog_source: str = "auto"
+    jobs_catalog_refresh_seconds: int = 300
+    job_sources_path: Path = DEFAULT_JOB_SOURCES_PATH
     allow_remote_llm_analysis: bool = False
     cors_origins: tuple[str, ...] = ("http://localhost:4200",)
     max_text_length: int = 200_000
@@ -266,6 +271,12 @@ class APISettings:
         env = os.environ if environ is None else environ
         app_env = read_app_environment(env)
         jobs_path = (env.get("JOBS_FEATURES_PATH") or "").strip()
+        sources_path = (env.get("JOB_SOURCES_PATH") or "").strip()
+        catalog_source = (env.get("JOBS_CATALOG_SOURCE") or "auto").strip().casefold()
+        if catalog_source not in JOB_CATALOG_SOURCES:
+            raise APIConfigurationError(
+                "JOBS_CATALOG_SOURCE must be one of: auto, database, dataset."
+            )
         api_prefix = (env.get("API_PREFIX") or "/api/v1").strip()
         if not api_prefix.startswith("/"):
             raise APIConfigurationError("API_PREFIX must start with '/'.")
@@ -368,6 +379,17 @@ class APISettings:
             api_prefix=api_prefix,
             jobs_features_path=(
                 Path(jobs_path) if jobs_path else DEFAULT_JOBS_FEATURES_PATH
+            ),
+            jobs_catalog_source=catalog_source,
+            jobs_catalog_refresh_seconds=_bounded_int(
+                env,
+                "JOBS_CATALOG_REFRESH_SECONDS",
+                300,
+                minimum=10,
+                maximum=86_400,
+            ),
+            job_sources_path=(
+                Path(sources_path) if sources_path else DEFAULT_JOB_SOURCES_PATH
             ),
             allow_remote_llm_analysis=_bool(env, "ALLOW_REMOTE_LLM_ANALYSIS"),
             cors_origins=cors_origins,

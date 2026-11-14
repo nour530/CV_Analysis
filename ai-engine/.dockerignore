@@ -16,6 +16,7 @@ data/features/*
 !data/features/job_features.csv
 !data/features/skills_dictionary.csv
 !data/features/skill_aliases.csv
+!data/features/skills_supplement.csv
 data/*.sqlite3
 tests/
 docs/

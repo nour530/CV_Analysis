@@ -40,6 +40,7 @@ import { formatPercent, toPercent } from '../../../core/formatters';
 export class ScoreRingComponent {
   readonly score = input(0);
   readonly caption = input('');
+  readonly label = input('overall compatibility');
   readonly tone = input<'strong' | 'moderate' | 'weak' | 'neutral'>('neutral');
   readonly circumference = 2 * Math.PI * 42;
   readonly percent = computed(() => toPercent(this.score()));
@@ -48,6 +49,6 @@ export class ScoreRingComponent {
   );
   readonly display = computed(() => formatPercent(this.score()));
   readonly ariaLabel = computed(
-    () => `${this.display()} overall compatibility${this.caption() ? `, ${this.caption()}` : ''}`,
+    () => `${this.display()} ${this.label()}${this.caption() ? `, ${this.caption()}` : ''}`,
   );
 }

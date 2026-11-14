@@ -21,11 +21,23 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'dashboard',
+    title: 'JobMatch AI · ATS CV checker and jobs in Tunisia',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./pages/landing/landing.page').then((module) => module.LandingPage),
+  },
+  {
+    path: 'applications',
+    title: 'My applications | JobMatch AI',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/applications/applications.page').then(
+        (module) => module.ApplicationsPage,
+      ),
   },
   {
     path: 'dashboard',
-    title: 'Dashboard | JobMatch AI',
+    title: 'Home | JobMatch AI',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/dashboard/dashboard.page').then(
@@ -41,7 +53,7 @@ export const routes: Routes = [
   },
   {
     path: 'jobs',
-    title: 'Job Explorer | JobMatch AI',
+    title: 'Jobs in Tunisia | JobMatch AI',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/jobs/jobs.page').then((module) => module.JobsPage),
@@ -63,6 +75,20 @@ export const routes: Routes = [
       import('./pages/matches/matches.page').then(
         (module) => module.MatchesPage,
       ),
+  },
+  {
+    path: 'editor',
+    title: 'CV builder | JobMatch AI',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/resumes/resumes.page').then((module) => module.ResumesPage),
+  },
+  {
+    path: 'editor/:id',
+    title: 'Edit CV | JobMatch AI',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/editor/editor.page').then((module) => module.EditorPage),
   },
   {
     path: 'settings',

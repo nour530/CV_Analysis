@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import logging
+import threading
+import time
 from functools import lru_cache
 
 from fastapi import Depends, Request
@@ -8,13 +12,18 @@ from app.api.settings import APISettings, get_api_settings
 from app.config import LLMSettings
 from app.core.logging import get_llm_logger, log_llm_event
 from app.core.rate_limit import enforce_rate_limit
+from app.db.session import get_session_factory
 from app.services.job_catalog import JobCatalog
+from app.services.jobs.sync import active_postings
 from app.services.llm.base import LLMProvider
 from app.services.llm.exceptions import LLMConfigurationError
 from app.services.llm.factory import create_llm_provider
 from app.services.matching.application import MatchingApplicationService
 from app.services.matching.hybrid_service import HybridMatchingService
 from app.services.matching.local_matcher import LocalMatcher
+from app.services.nlp.skills import LocalSkillExtractor
+
+LOGGER = logging.getLogger("jobmatch.jobs")
 
 
 @lru_cache(maxsize=4)
@@ -37,10 +46,71 @@ def enforce_global_rate_limit(
     )
 
 
+@lru_cache(maxsize=1)
+def _shared_skill_extractor() -> LocalSkillExtractor:
+    return LocalSkillExtractor()
+
+
+class _LiveCatalogCache:
+    """Caches the catalog built from synchronised postings and refreshes it
+    after ``JOBS_CATALOG_REFRESH_SECONDS``. A refresh only rebuilds the catalog
+    (and its TF-IDF fit) when the set of active postings actually changed."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.catalog: JobCatalog | None = None
+        self.signature: str | None = None
+        self.checked_at = 0.0
+
+    def reset(self) -> None:
+        with self._lock:
+            self.catalog, self.signature, self.checked_at = None, None, 0.0
+
+    def get(self, refresh_seconds: int) -> JobCatalog:
+        now = time.monotonic()
+        if self.catalog is not None and now - self.checked_at < refresh_seconds:
+            return self.catalog
+        with self._lock:
+            if self.catalog is not None and now - self.checked_at < refresh_seconds:
+                return self.catalog
+            try:
+                with get_session_factory()() as db:
+                    rows = active_postings(db)
+                    digest = hashlib.sha256(
+                        "|".join(f"{row.id}:{row.content_hash}" for row in rows).encode()
+                    ).hexdigest()
+                    if self.catalog is None or digest != self.signature:
+                        self.catalog = JobCatalog.from_postings(
+                            rows, extractor=_shared_skill_extractor()
+                        )
+                        self.signature = digest
+                        LOGGER.info("live_job_catalog_loaded jobs=%d", len(self.catalog))
+            except Exception as exc:
+                LOGGER.warning("live_job_catalog_unavailable %s", type(exc).__name__)
+                if self.catalog is None:
+                    self.catalog = JobCatalog([], extractor=_shared_skill_extractor())
+            self.checked_at = now
+            return self.catalog
+
+
+_LIVE_CATALOG = _LiveCatalogCache()
+
+
+def reset_job_catalog_cache() -> None:
+    _LIVE_CATALOG.reset()
+
+
 def get_job_catalog(
     settings: APISettings = Depends(get_api_settings),
 ) -> JobCatalog:
-    return _catalog_for_path(str(settings.jobs_features_path))
+    """Return real synchronised jobs; ``auto`` falls back to the research
+    dataset only while no postings have been synchronised yet."""
+    if settings.jobs_catalog_source == "dataset":
+        return _catalog_for_path(str(settings.jobs_features_path))
+    live = _LIVE_CATALOG.get(settings.jobs_catalog_refresh_seconds)
+    if settings.jobs_catalog_source == "auto" and len(live) == 0:
+        return _catalog_for_path(str(settings.jobs_features_path))
+    return live
 
 
 @lru_cache(maxsize=4)

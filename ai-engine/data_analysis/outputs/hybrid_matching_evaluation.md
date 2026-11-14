@@ -1,6 +1,6 @@
 # Hybrid Matching Evaluation
 
-Generated: 2026-11-14T13:44:24.498314+00:00
+Generated: 2026-11-14T15:07:14.092534+00:00
 
 This report uses a synthetic, curated development set. It is useful for
 regression checking and weight selection, not as a production benchmark.

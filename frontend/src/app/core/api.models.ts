@@ -112,6 +112,84 @@ export interface CVProfileResponse {
   document: DocumentMetadata | null;
   analysis_id?: string | null;
   candidate_profile_id?: string | null;
+  ats?: AtsReport | null;
+}
+
+export type AtsStatus = 'pass' | 'warning' | 'fail' | 'info';
+export type AtsCategoryId = 'parsing' | 'contact' | 'sections' | 'content' | 'keywords';
+export type AtsGrade = 'excellent' | 'good' | 'fair' | 'poor';
+
+export interface AtsCheck {
+  id: string;
+  category: AtsCategoryId;
+  status: AtsStatus;
+  title: string;
+  message: string;
+  fix: string | null;
+  points: number;
+  max_points: number;
+}
+
+export interface AtsCategoryScore {
+  id: AtsCategoryId;
+  label: string;
+  score: number;
+  points: number;
+  max_points: number;
+  passed: number;
+  total: number;
+}
+
+export interface AtsSection {
+  id: string;
+  label: string;
+  heading: string | null;
+  found: boolean;
+}
+
+export interface AtsKeywordMatch {
+  job_id: string | null;
+  job_title: string | null;
+  company: string | null;
+  coverage: number;
+  matched: string[];
+  missing_required: string[];
+  missing_preferred: string[];
+  title_in_cv: boolean;
+}
+
+export interface AtsStats {
+  word_count: number;
+  line_count: number;
+  bullet_count: number;
+  quantified_bullets: number;
+  action_verb_bullets: number;
+  skill_count: number;
+  page_count: number | null;
+  document_type: string | null;
+}
+
+export interface AtsReport {
+  score: number;
+  grade: AtsGrade;
+  summary: string;
+  language: 'en' | 'fr' | 'mixed';
+  categories: AtsCategoryScore[];
+  checks: AtsCheck[];
+  top_fixes: string[];
+  sections: AtsSection[];
+  keyword_match: AtsKeywordMatch | null;
+  stats: AtsStats;
+  layout_checked: boolean;
+  version: string;
+  disclaimer: string;
+}
+
+export interface AtsCheckRequest {
+  analysis_id?: string | null;
+  job_id?: string | null;
+  job_text?: string | null;
+  job_title?: string | null;
 }
 
 export interface CVAnalysisSummary {
@@ -123,6 +201,7 @@ export interface CVAnalysisSummary {
   skill_count: number;
   resume_id: string | null;
   category: string | null;
+  ats_score?: number | null;
   created_at: string;
 }
 
@@ -137,6 +216,35 @@ export interface JobSummary {
   description_excerpt: string;
   required_skills: string[];
   preferred_skills: string[];
+  company?: string | null;
+  company_logo_url?: string | null;
+  location?: string | null;
+  city?: string | null;
+  country_code?: string | null;
+  workplace?: JobWorkplace | null;
+  employment_type?: string | null;
+  experience_level?: string | null;
+  salary?: string | null;
+  apply_url?: string | null;
+  posted_at?: string | null;
+  source?: string;
+  source_label?: string | null;
+}
+
+export type JobWorkplace = 'onsite' | 'hybrid' | 'remote' | 'unknown';
+
+export interface FacetValue {
+  value: string;
+  count: number;
+}
+
+export interface JobFacetsResponse {
+  total: number;
+  live: boolean;
+  categories: FacetValue[];
+  cities: FacetValue[];
+  companies: FacetValue[];
+  workplaces: FacetValue[];
 }
 
 export interface JobDetailResponse {
@@ -157,6 +265,9 @@ export interface JobListResponse {
 export interface JobListParams {
   category?: string | null;
   q?: string | null;
+  workplace?: JobWorkplace | '' | null;
+  location?: string | null;
+  company?: string | null;
   offset?: number;
   limit?: number;
 }

@@ -74,6 +74,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_JSON: "true"
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-172.28.0.0/16}
+      JOBS_CATALOG_SOURCE: ${JOBS_CATALOG_SOURCE:-database}
+      JOBS_CATALOG_REFRESH_SECONDS: ${JOBS_CATALOG_REFRESH_SECONDS:-300}
       ALLOW_REMOTE_LLM_ANALYSIS: ${ALLOW_REMOTE_LLM_ANALYSIS:-false}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
@@ -93,6 +95,33 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    restart: unless-stopped
+    networks:
+      - jobmatch
+
+  job-sync:
+    build:
+      context: ./ai-engine
+    # Fetches real job postings from the employer job-board APIs listed in
+    # data/job_sources.json, then repeats every JOB_SYNC_INTERVAL_SECONDS.
+    command:
+      - sh
+      - -c
+      - exec python -m app.cli sync-jobs --loop-seconds ${JOB_SYNC_INTERVAL_SECONDS:-21600}
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-jobmatch}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-jobmatch}}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ENABLE_HSTS: ${ENABLE_HSTS:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to the public HTTPS frontend origin}
+      LOG_JSON: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     networks:
       - jobmatch

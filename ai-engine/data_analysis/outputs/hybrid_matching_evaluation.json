@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T13:44:24.496772+00:00",
+  "generated_at": "2026-11-14T15:07:14.091537+00:00",
   "dataset": "synthetic_curated_development_set",
   "default_metrics": {
     "sample_count": 20,
@@ -57,7 +57,7 @@
     },
     "mean_score_by_actual_label": {
       "strong_match": 0.920159,
-      "moderate_match": 0.508078,
+      "moderate_match": 0.502196,
       "weak_match": 0.038737
     },
     "predictions": [
@@ -89,7 +89,8 @@
           "Scikit-learn",
           "TensorFlow",
           "Docker",
-          "PyTorch"
+          "PyTorch",
+          "Machine learning"
         ],
         "missing_required_skills": [],
         "review_rationale": "All required skills are explicit and the preferred skills are also evidenced."
@@ -191,7 +192,7 @@
         "case_id": "case_009",
         "actual_label": "moderate_match",
         "predicted_label": "moderate_match",
-        "score": 0.529973,
+        "score": 0.512326,
         "matched_skills": [
           "JavaScript",
           "Python",
@@ -207,7 +208,7 @@
         "case_id": "case_010",
         "actual_label": "moderate_match",
         "predicted_label": "moderate_match",
-        "score": 0.558797,
+        "score": 0.54115,
         "matched_skills": [
           "pandas",
           "Python",

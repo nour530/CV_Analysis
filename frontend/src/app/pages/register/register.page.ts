@@ -63,8 +63,11 @@ export class RegisterPage {
       .subscribe({
         next: () => {
           this.loading.set(false);
+          // The email travels in navigation state, never in the URL, so it
+          // does not end up in browser history or server logs.
           void this.router.navigate(['/login'], {
-            queryParams: { registered: '1', email: email.trim() },
+            queryParams: { registered: '1' },
+            state: { email: email.trim() },
           });
         },
         error: (error: unknown) => {

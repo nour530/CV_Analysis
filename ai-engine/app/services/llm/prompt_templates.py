@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 from pydantic import BaseModel
 
 from app.schemas.common import StructuredExtractionResult
+from app.schemas.cv_document import CvImprovementOutput
 from app.schemas.job_analysis import JobAnalysis
 from app.schemas.match_analysis import MatchAnalysis
 from app.schemas.resume_analysis import ResumeAnalysis
@@ -164,6 +165,47 @@ def match_explanation_prompt(
         version=PROMPT_VERSION,
         system=BASE_SYSTEM_PROMPT,
         user=user,
+    )
+
+
+CV_IMPROVEMENT_VERSION = "1.0.0"
+
+
+def cv_improvement_prompt(items_text: str, *, language: str) -> PromptTemplate:
+    """Rewrite CV items the user wrote, without adding facts.
+
+    ``items_text`` lists items as ``[ref] text`` lines, optionally followed by
+    the target job's skills. Contact details are never included.
+    """
+    target = "French" if language == "fr" else "English"
+    instruction = (
+        "Task: improve the wording of CV items for applicant tracking systems and "
+        "recruiters. For each item that can be improved, return one suggestion with "
+        "the same ref, the rewritten text and a short reason.\n"
+        "Rules:\n"
+        "1. Keep every fact exactly as given: employer, tools, scope, numbers, dates. "
+        "Do not add employers, tools, skills, certifications, results or numbers that "
+        "the item does not state.\n"
+        "2. Where a measurable result would help but none is given, insert a "
+        "placeholder in square brackets such as [X%], [N clients] or [amount] for the "
+        "user to fill in. Never make up the figure.\n"
+        "3. Bullet items (refs starting with 'exp:' or 'proj:'): one line, at most 30 "
+        "words, start with a strong past-tense action verb (present tense for a "
+        "current role), no first person, no trailing full stop.\n"
+        "4. The summary item: 2-3 sentences, at most 60 words, role and years of "
+        "experience first, then strengths that the CV items support.\n"
+        "5. If target-job skills are listed, you may reuse the job's wording for a "
+        "skill only when the item already shows that skill. Never claim a skill the "
+        "item does not show.\n"
+        "6. Skip items that are already strong. Do not return unchanged text.\n"
+        f"7. Write suggestions and reasons in {target}."
+    )
+    template = _prompt("cv_improvement", instruction, items_text, CvImprovementOutput)
+    return PromptTemplate(
+        name=template.name,
+        version=CV_IMPROVEMENT_VERSION,
+        system=template.system,
+        user=template.user,
     )
 
 

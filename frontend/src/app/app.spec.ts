@@ -48,9 +48,11 @@ describe('App', () => {
     const app = fixture.componentInstance;
 
     expect(app).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('JobMatch AI');
-    expect(fixture.nativeElement.textContent).toContain('test@example.com');
-    expect(fixture.nativeElement.textContent).toContain('Sign out');
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('JobMatch');
+    expect(text).toContain('Test');
+    expect(fixture.nativeElement.querySelectorAll('.topnav__link').length).toBe(5);
+    expect(fixture.nativeElement.querySelectorAll('.tabbar__item').length).toBe(5);
   });
 
   it('renders only the route outlet when signed out', async () => {
@@ -66,25 +68,29 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.app-shell')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.shell')).toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('toggles the responsive navigation drawer', () => {
+  it('opens the account menu with settings and sign out', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const app = fixture.componentInstance;
+    const button = fixture.nativeElement.querySelector('.account__button') as HTMLButtonElement;
 
-    expect(app.sidebarOpen()).toBe(false);
-
-    const toggle = fixture.nativeElement.querySelector(
-      '.mobile-menu',
-    ) as HTMLButtonElement;
-    toggle.click();
+    expect(app.menuOpen()).toBe(false);
+    button.click();
     fixture.detectChanges();
 
-    expect(app.sidebarOpen()).toBe(true);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(app.menuOpen()).toBe(true);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    const menu: HTMLElement = fixture.nativeElement.querySelector('.account__menu');
+    expect(menu.textContent).toContain('test@example.com');
+    expect(menu.textContent).toContain('Sign out');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(app.menuOpen()).toBe(false);
   });
 
   it('shows a recoverable error when sign out fails', async () => {
@@ -103,9 +109,11 @@ describe('App', () => {
 
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const signOut = fixture.nativeElement.querySelector(
-      '.topbar__actions button',
-    ) as HTMLButtonElement;
+    (fixture.nativeElement.querySelector('.account__button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const signOut = Array.from(
+      fixture.nativeElement.querySelectorAll('.account__menu button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Sign out')) as HTMLButtonElement;
 
     signOut.click();
     fixture.detectChanges();

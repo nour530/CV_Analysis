@@ -1,0 +1,113 @@
+<div class="page">
+  <app-page-header
+    eyebrow="Tracker"
+    title="My applications"
+    description="Save jobs, then move them along as you apply, interview and get answers."
+  >
+    <a class="btn btn--primary" routerLink="/jobs">
+      <app-icon name="jobs" [size]="16" />
+      Find jobs
+    </a>
+  </app-page-header>
+
+  @if (error(); as problem) {
+    <div class="alert alert--error" role="alert">
+      <app-icon name="alert" [size]="18" />
+      <p>{{ problem.message }}</p>
+    </div>
+  }
+
+  @if (loading()) {
+    <app-state-panel variant="loading" title="Loading your applications" message="One moment." />
+  } @else if (!store.items().length) {
+    <app-state-panel
+      variant="empty"
+      title="No saved jobs yet"
+      message="Use the bookmark on any job to save it here, then track it from application to offer."
+    />
+  } @else {
+    <div class="tr-summary" role="status">
+      <span><strong>{{ store.items().length }}</strong> tracked</span>
+      <span><strong>{{ activeCount() }}</strong> in progress</span>
+      <span><strong>{{ store.counts().interview }}</strong> interviews</span>
+      <span><strong>{{ store.counts().offer }}</strong> offers</span>
+    </div>
+
+    <div class="tr-filter" role="tablist" aria-label="Filter by status">
+      <button type="button" role="tab" [attr.aria-selected]="filter() === 'all'" [class.is-active]="filter() === 'all'" (click)="setFilter('all')">
+        All <span>{{ store.items().length }}</span>
+      </button>
+      @for (column of columns; track column.status) {
+        <button type="button" role="tab" [attr.aria-selected]="filter() === column.status" [class.is-active]="filter() === column.status" (click)="setFilter(column.status)">
+          {{ column.label }} <span>{{ store.counts()[column.status] }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="tr-board" [class.tr-board--single]="filter() !== 'all'">
+      @for (column of visibleColumns(); track column.status) {
+        <section class="tr-column tr-column--{{ column.status }}" [attr.aria-label]="column.label">
+          <header>
+            <h2>{{ column.label }} <span>{{ grouped().get(column.status)?.length ?? 0 }}</span></h2>
+            <p>{{ column.hint }}</p>
+          </header>
+          <ul>
+            @for (item of grouped().get(column.status) ?? []; track item.id) {
+              <li class="tr-card">
+                <div class="tr-card__top">
+                  <span class="tr-card__company">{{ item.company || 'Company not listed' }}</span>
+                  @if (item.match_score !== null) {
+                    <span class="tr-card__match" [title]="'Match with your CV when saved'">{{ percent(item.match_score) }}</span>
+                  }
+                </div>
+                <h3>
+                  @if (item.job_active) {
+                    <a [routerLink]="['/jobs', item.job_id]">{{ item.title }}</a>
+                  } @else {
+                    {{ item.title }}
+                  }
+                </h3>
+                @if (item.location) { <p class="tr-card__meta">{{ item.location }}</p> }
+                @if (!item.job_active) { <p class="tr-card__closed">This posting is no longer listed.</p> }
+                @if (item.applied_at) {
+                  <p class="tr-card__meta">Applied {{ item.applied_at + 'Z' | date: 'mediumDate' }}</p>
+                }
+
+                @if (editingNotes() === item.id) {
+                  <label class="sr-only" [for]="'notes-' + item.id">Notes for {{ item.title }}</label>
+                  <textarea [id]="'notes-' + item.id" class="textarea tr-card__notes" [value]="item.notes ?? ''" (blur)="saveNotes(item, $event)" maxlength="2000"
+                            placeholder="Contact person, interview date, follow-up…"></textarea>
+                } @else if (item.notes) {
+                  <button type="button" class="tr-card__note" (click)="editingNotes.set(item.id)">{{ item.notes }}</button>
+                }
+
+                <div class="tr-card__actions">
+                  <label class="sr-only" [for]="'status-' + item.id">Status of {{ item.title }}</label>
+                  <select [id]="'status-' + item.id" class="select select--sm" [value]="item.status" (change)="move(item, $event)">
+                    @for (option of columns; track option.status) {
+                      <option [value]="option.status">{{ option.label }}</option>
+                    }
+                  </select>
+                  @if (item.apply_url && item.status === 'saved') {
+                    <a class="btn btn--primary btn--sm" [href]="item.apply_url" target="_blank" rel="noopener noreferrer">Apply</a>
+                  }
+                  @if (!item.notes && editingNotes() !== item.id) {
+                    <button type="button" class="btn btn--ghost btn--sm" (click)="editingNotes.set(item.id)">Add note</button>
+                  }
+                  <button type="button" class="btn btn--ghost btn--icon btn--sm tr-card__remove" (click)="remove(item)" [attr.aria-label]="'Remove ' + item.title">
+                    <app-icon name="trash" [size]="15" />
+                  </button>
+                </div>
+                @if (item.status === 'saved') {
+                  <a class="link tr-card__tailor" routerLink="/editor" [queryParams]="{ jobId: item.job_id }">Tailor my CV for this job →</a>
+                }
+              </li>
+            } @empty {
+              <li class="tr-empty">Nothing here yet.</li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+  }
+</div>

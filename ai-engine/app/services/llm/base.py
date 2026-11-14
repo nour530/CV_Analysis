@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.core.logging import get_llm_logger, log_llm_event
 from app.schemas.common import AnalysisMetadata, StructuredExtractionResult
+from app.schemas.cv_document import CvImprovementOutput
 from app.schemas.job_analysis import JobAnalysis
 from app.schemas.match_analysis import MatchAnalysis
 from app.schemas.resume_analysis import ResumeAnalysis
@@ -154,6 +155,17 @@ class BaseLLMProvider(LLMProvider):
             operation=f"structured_extraction:{response_model.__name__}",
             prompt=prompt,
             response_model=response_model,
+            input_chars=len(checked_text),
+        )
+
+    def improve_cv(self, items_text: str, *, language: str = "en") -> CvImprovementOutput:
+        """Suggest rewrites for CV items. The caller validates every suggestion."""
+        checked_text = validate_input_text(items_text, "cv_items")
+        prompt = prompt_templates.cv_improvement_prompt(checked_text, language=language)
+        return self._execute(
+            operation="cv_improvement",
+            prompt=prompt,
+            response_model=CvImprovementOutput,
             input_chars=len(checked_text),
         )
 

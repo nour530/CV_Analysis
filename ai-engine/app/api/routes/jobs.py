@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from app.api.dependencies import get_matching_application_service
+from app.api.dependencies import get_job_catalog, get_matching_application_service
 from app.api.presenters import job_summary
-from app.api.schemas import JobDetailResponse, JobListResponse
+from app.api.schemas import (
+    FacetValue,
+    JobDetailResponse,
+    JobFacetsResponse,
+    JobListResponse,
+)
+from app.services.job_catalog import JobCatalog
 from app.services.matching.application import MatchingApplicationService
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -18,6 +24,9 @@ router = APIRouter(prefix="/jobs", tags=["Jobs"])
 def list_jobs(
     category: str | None = Query(default=None, max_length=120),
     q: str | None = Query(default=None, max_length=200),
+    workplace: str | None = Query(default=None, pattern="^(onsite|hybrid|remote|unknown)$"),
+    location: str | None = Query(default=None, max_length=120),
+    company: str | None = Query(default=None, max_length=200),
     offset: int = Query(default=0, ge=0, le=100_000),
     limit: int = Query(default=50, ge=1, le=200),
     service: MatchingApplicationService = Depends(get_matching_application_service),
@@ -27,12 +36,33 @@ def list_jobs(
         query=q,
         offset=offset,
         limit=limit,
+        workplace=workplace,
+        location=location,
+        company=company,
     )
     return JobListResponse(
         jobs=[job_summary(job) for job in jobs],
         total=total,
         offset=offset,
         limit=limit,
+    )
+
+
+@router.get(
+    "/facets",
+    response_model=JobFacetsResponse,
+    summary="Filter values with counts for the job catalog",
+)
+def job_facets(catalog: JobCatalog = Depends(get_job_catalog)) -> JobFacetsResponse:
+    facets = catalog.facets()
+    jobs = catalog.all_jobs()
+    return JobFacetsResponse(
+        total=len(jobs),
+        live=bool(jobs) and jobs[0].source != "dataset",
+        **{
+            name: [FacetValue(value=value[:200], count=count) for value, count in values]
+            for name, values in facets.items()
+        },
     )
 
 

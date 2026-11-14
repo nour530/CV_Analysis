@@ -4,7 +4,7 @@ import io
 import re
 import unicodedata
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -15,6 +15,8 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
+
+from app.services.documents.layout import LayoutSignals, inspect_layout
 
 DocumentType = Literal["text", "pdf", "docx"]
 ExtractionStatus = Literal["success"]
@@ -64,6 +66,7 @@ class ExtractedDocument:
     page_count: int | None
     extraction_status: ExtractionStatus
     character_count: int
+    layout: LayoutSignals | None = field(default=None, compare=False)
 
 
 class DocumentExtractionService:
@@ -129,6 +132,7 @@ class DocumentExtractionService:
             page_count=page_count,
             extraction_status="success",
             character_count=len(normalized),
+            layout=inspect_layout(payload, document_type, normalized, page_count),
         )
 
     @staticmethod
@@ -347,7 +351,9 @@ class DocumentExtractionService:
             if child.tag == qn("w:p"):
                 paragraph = Paragraph(child, document)
                 if paragraph.text.strip():
-                    parts.append(paragraph.text)
+                    parts.append(
+                        f"- {paragraph.text.strip()}" if _is_list_paragraph(child) else paragraph.text
+                    )
             elif child.tag == qn("w:tbl"):
                 table = Table(child, document)
                 rows: list[str] = []
@@ -364,6 +370,19 @@ class DocumentExtractionService:
                 if rows:
                     parts.append("\n".join(rows))
         return "\n\n".join(parts)
+
+
+def _is_list_paragraph(element) -> bool:
+    """True for Word bullet/numbered list items, whose markers are not part of
+    the paragraph text. Keeping a "- " prefix preserves them for ATS checks."""
+    properties = element.find(qn("w:pPr"))
+    if properties is None:
+        return False
+    if properties.find(qn("w:numPr")) is not None:
+        return True
+    style = properties.find(qn("w:pStyle"))
+    value = style.get(qn("w:val")) if style is not None else ""
+    return bool(value) and value.replace(" ", "").casefold().startswith("list")
 
 
 def normalize_extracted_text(value: str) -> str:

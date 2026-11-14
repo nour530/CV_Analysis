@@ -239,13 +239,24 @@ class MatchingApplicationService:
         resume_keys = frozenset(
             normalize_skill_key(skill.skill) for skill in resume.skills
         )
+        config = self.hybrid_service.config
+        key_weights = {
+            normalize_skill_key(skill.skill): config.skill_weight(skill.category, skill.skill)
+            for skill in resume.skills
+        }
+
+        def overlap(keys: frozenset[str]) -> float:
+            return round(sum(key_weights[key] for key in resume_keys & keys), 6)
+
         indexed_jobs = list(enumerate(candidate_jobs))
         if resume_keys:
+            # Rank by weighted overlap so generic skills (languages, soft
+            # skills) do not crowd specialised jobs out of the candidate pool.
             indexed_jobs.sort(
                 key=lambda item: (
-                    len(resume_keys & item[1].required_keys),
-                    len(resume_keys & item[1].preferred_keys),
-                    len(resume_keys & item[1].skill_keys),
+                    overlap(item[1].required_keys),
+                    overlap(item[1].preferred_keys),
+                    overlap(item[1].skill_keys),
                     -item[0],
                 ),
                 reverse=True,
@@ -305,10 +316,16 @@ class MatchingApplicationService:
         query: str | None,
         offset: int,
         limit: int,
+        workplace: str | None = None,
+        location: str | None = None,
+        company: str | None = None,
     ) -> tuple[list[CatalogJob], int]:
         return self.catalog.list_jobs(
             category=category,
             query=query,
             offset=offset,
             limit=limit,
+            workplace=workplace,
+            location=location,
+            company=company,
         )

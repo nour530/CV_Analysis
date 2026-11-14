@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -188,6 +189,12 @@ class CVAnalysis(Base):
     character_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     skill_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     profile_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # Extracted text with line breaks (never the uploaded file), layout signals
+    # read at upload time, and the ATS report. Used for ATS re-checks against a
+    # job and by the CV editor. Deleted with the rest of the CV history.
+    resume_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    layout_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    ats_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="cv_analyses")
@@ -218,3 +225,113 @@ class SavedMatch(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="saved_matches")
+
+
+class JobPosting(Base):
+    """A real job posting synchronised from an external job-board API."""
+
+    __tablename__ = "job_postings"
+    __table_args__ = (
+        UniqueConstraint(
+            "source", "source_company", "external_id", name="uq_job_postings_source_key"
+        ),
+        Index("ix_job_postings_active_posted", "is_active", "posted_at"),
+        Index("ix_job_postings_source_company", "source", "source_company"),
+    )
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_company: Mapped[str] = mapped_column(String(120), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    version: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    company_logo_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    workplace: Mapped[str] = mapped_column(String(20), nullable=False, default="unknown")
+    employment_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    experience_level: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    salary_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    apply_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    required_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    preferred_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    other_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CvDocumentRecord(Base):
+    """A CV the user edits in the CV builder (structured content, no file)."""
+
+    __tablename__ = "cv_documents"
+    __table_args__ = (Index("ix_cv_documents_user_updated", "user_id", "updated_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    language: Mapped[str] = mapped_column(String(5), nullable=False, default="en")
+    template: Mapped[str] = mapped_column(String(20), nullable=False, default="classic")
+    content_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    ats_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_analysis_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("cv_analyses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class JobApplication(Base):
+    """A job the user saved or applied to, with a snapshot of the posting so
+    the tracker keeps working after the posting closes."""
+
+    __tablename__ = "job_applications"
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_id", name="uq_job_applications_user_job"),
+        Index("ix_job_applications_user_updated", "user_id", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    job_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    apply_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="saved")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    resume_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("cv_documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utcnow, onupdate=utcnow
+    )

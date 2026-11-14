@@ -6,14 +6,18 @@ from sqlalchemy.orm import Session
 from app.api.auth_schemas import CVAnalysisHistoryResponse
 from app.api.dependencies import get_api_settings, get_matching_application_service
 from app.api.errors import APIError
-from app.api.schemas import CVAnalysisRequest, CVProfileResponse
+from app.api.schemas import AtsCheckRequest, CVAnalysisRequest, CVProfileResponse
 from app.api.settings import APISettings
 from app.api.uploads import read_document_upload
 from app.auth.dependencies import get_auth_context
 from app.auth.service import AuthContext
 from app.core.user_quota import CV_ANALYSIS, enforce_user_quota
 from app.db.session import get_db
-from app.services.matching.application import MatchingApplicationService
+from app.schemas.ats import AtsReport
+from app.services.ats import AtsChecker
+from app.services.documents.extraction import ExtractedDocument, normalize_extracted_text
+from app.services.documents.layout import LayoutSignals
+from app.services.matching.application import CVProfileResult, MatchingApplicationService
 from app.services.user_records import (
     cv_analysis_to_response,
     delete_cv_history,
@@ -24,6 +28,22 @@ from app.services.user_records import (
 )
 
 router = APIRouter(prefix="/cv", tags=["CV analysis"])
+
+
+def _ats_report(
+    service: MatchingApplicationService,
+    text: str,
+    result: CVProfileResult,
+    document: ExtractedDocument | None = None,
+) -> AtsReport:
+    checker = AtsChecker(extractor=service.hybrid_service.extractor)
+    return checker.check(
+        text,
+        layout=document.layout if document is not None else None,
+        document_type=document.document_type if document is not None else None,
+        page_count=document.page_count if document is not None else None,
+        skills=result.profile.skills,
+    )
 
 
 def _validate_text_length(text: str, settings: APISettings) -> None:
@@ -63,7 +83,14 @@ def analyze_cv(
         category=request.category,
         experience_evidence=request.experience_evidence or None,
     )
-    analysis = save_cv_analysis(db, user_id=context.user.id, result=result)
+    resume_text = normalize_extracted_text(request.resume_text)
+    analysis = save_cv_analysis(
+        db,
+        user_id=context.user.id,
+        result=result,
+        resume_text=resume_text,
+        ats=_ats_report(service, resume_text, result),
+    )
     return cv_analysis_to_response(analysis)
 
 
@@ -111,8 +138,60 @@ async def analyze_cv_upload(
         user_id=context.user.id,
         result=result,
         document=document,
+        ats=_ats_report(service, document.text, result, document),
     )
     return cv_analysis_to_response(analysis)
+
+
+@router.post(
+    "/ats",
+    response_model=AtsReport,
+    summary="Check a saved CV against ATS rules, optionally for a specific job",
+)
+def check_cv_ats(
+    request: AtsCheckRequest,
+    context: AuthContext = Depends(get_auth_context),
+    service: MatchingApplicationService = Depends(get_matching_application_service),
+    db: Session = Depends(get_db),
+) -> AtsReport:
+    analysis = (
+        get_cv_analysis(db, user_id=context.user.id, analysis_id=request.analysis_id)
+        if request.analysis_id
+        else latest_cv_analysis(db, user_id=context.user.id)
+    )
+    if analysis is None:
+        raise APIError(
+            status_code=404,
+            code="cv_not_found",
+            message="Analyse a CV first, then run the ATS check.",
+        )
+    profile = cv_analysis_to_response(analysis).profile
+    # Analyses saved before line-preserving text was stored fall back to the
+    # profile text, which has no line breaks; section checks are then weaker.
+    text = analysis.resume_text or profile.semantic_text or ""
+    checker = AtsChecker(extractor=service.hybrid_service.extractor)
+
+    requirements = None
+    job_id = job_title = company = None
+    if request.job_id:
+        job = service.get_job(request.job_id)  # unknown IDs map to a 404 handler
+        requirements = service.catalog.profile(job).requirements
+        job_id, job_title, company = job.job_id, job.title, job.company
+    elif request.job_text and request.job_text.strip():
+        requirements = service.hybrid_service.extractor.extract_requirements(request.job_text)
+        job_title = request.job_title
+
+    return checker.check(
+        text,
+        layout=LayoutSignals.from_dict(analysis.layout_json),
+        document_type=analysis.document_type,
+        page_count=analysis.page_count,
+        skills=profile.skills,
+        job_requirements=requirements,
+        job_id=job_id,
+        job_title=job_title,
+        company=company,
+    )
 
 
 @router.get(

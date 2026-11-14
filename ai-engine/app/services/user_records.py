@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.schemas.ats import AtsReport
 from app.api.auth_schemas import (
     CVAnalysisSummary,
     MatchHistoryDetail,
@@ -14,6 +15,7 @@ from app.api.schemas import CVProfileResponse, DocumentMetadata
 from app.db.models import (
     CandidateProfile,
     CVAnalysis,
+    CvDocumentRecord,
     SavedMatch,
     UserSettings,
     utcnow,
@@ -29,6 +31,8 @@ def save_cv_analysis(
     user_id: str,
     result: CVProfileResult,
     document: ExtractedDocument | None = None,
+    resume_text: str | None = None,
+    ats: AtsReport | None = None,
 ) -> CVAnalysis:
     profile_json = result.profile.model_dump(mode="json")
     resume_id = result.profile.resume_id
@@ -63,6 +67,11 @@ def save_cv_analysis(
         character_count=document.character_count if document is not None else None,
         skill_count=result.skill_count,
         profile_json=profile_json,
+        resume_text=resume_text if resume_text is not None else (document.text if document else None),
+        layout_json=(
+            document.layout.to_dict() if document is not None and document.layout is not None else None
+        ),
+        ats_json=ats.model_dump(mode="json") if ats is not None else None,
     )
     db.add(analysis)
     db.commit()
@@ -100,7 +109,18 @@ def cv_analysis_to_response(analysis: CVAnalysis) -> CVProfileResponse:
         document=document,
         analysis_id=analysis.id,
         candidate_profile_id=analysis.candidate_profile_id,
+        ats=_stored_ats(analysis),
     )
+
+
+def _stored_ats(analysis: CVAnalysis) -> AtsReport | None:
+    if not analysis.ats_json:
+        return None
+    try:
+        return AtsReport.model_validate(analysis.ats_json)
+    except ValueError:
+        # Reports saved by an older checker version are recomputed on demand.
+        return None
 
 
 def latest_cv_analysis(db: Session, *, user_id: str) -> CVAnalysis | None:
@@ -149,6 +169,7 @@ def list_cv_analyses(
             category=row.candidate_profile.category
             if row.candidate_profile is not None
             else None,
+            ats_score=(row.ats_json or {}).get("score") if isinstance(row.ats_json, dict) else None,
             created_at=row.created_at,
         )
         for row in rows
@@ -156,6 +177,13 @@ def list_cv_analyses(
 
 
 def delete_cv_history(db: Session, *, user_id: str) -> None:
+    # Saved CV builder documents are kept, but no longer point at the deleted
+    # analyses (SQLite does not enforce ON DELETE SET NULL by default).
+    db.execute(
+        update(CvDocumentRecord)
+        .where(CvDocumentRecord.user_id == user_id)
+        .values(source_analysis_id=None)
+    )
     db.execute(delete(CVAnalysis).where(CVAnalysis.user_id == user_id))
     db.execute(delete(CandidateProfile).where(CandidateProfile.user_id == user_id))
     db.commit()

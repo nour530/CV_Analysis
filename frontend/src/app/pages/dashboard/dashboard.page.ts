@@ -1,79 +1,122 @@
-import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import {
-  HealthResponse,
-  JobListResponse,
+  CVAnalysisSummary,
+  JobSummary,
   RecommendationRequest,
   RecommendationResponse,
 } from '../../core/api.models';
-import { ApiError, toApiError } from '../../core/api-error';
 import { JobMatchApiService } from '../../core/api.service';
-import {
-  classificationLabel,
-  classificationTone,
-  formatDate,
-  formatDateTime,
-  formatPercent,
-} from '../../core/formatters';
-import { RecentActivity, WorkspaceStore } from '../../core/workspace.store';
-import { IconComponent } from '../../shared/components/icon/icon';
-import { PageHeaderComponent } from '../../shared/components/page-header/page-header';
+import { ApplicationsStore } from '../../core/applications.store';
+import { AuthService } from '../../core/auth.service';
+import { postedAgo } from '../../core/formatters';
+import { ResumeSummary } from '../../core/resume.models';
+import { WorkspaceStore } from '../../core/workspace.store';
+import { IconComponent, IconName } from '../../shared/components/icon/icon';
 import { ScoreRingComponent } from '../../shared/components/score-ring/score-ring';
-import { StatePanelComponent } from '../../shared/components/state-panel/state-panel';
 
-interface DashboardData {
-  health: HealthResponse;
-  jobs: JobListResponse;
-  recommendations: RecommendationResponse | null;
+export interface JourneyStep {
+  id: string;
+  title: string;
+  text: string;
+  done: boolean;
+  cta: string;
+  link: string;
+  icon: IconName;
 }
+
+const ATS_TARGET = 80;
 
 @Component({
   selector: 'app-dashboard-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    DecimalPipe,
-    RouterLink,
-    IconComponent,
-    PageHeaderComponent,
-    ScoreRingComponent,
-    StatePanelComponent,
-  ],
+  imports: [RouterLink, IconComponent, ScoreRingComponent],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.css',
 })
 export class DashboardPage {
   private readonly api = inject(JobMatchApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
   readonly store = inject(WorkspaceStore);
+  readonly applications = inject(ApplicationsStore);
 
   readonly loading = signal(true);
-  readonly error = signal<ApiError | null>(null);
-  readonly data = signal<DashboardData | null>(null);
+  readonly history = signal<CVAnalysisSummary[]>([]);
+  readonly resumes = signal<ResumeSummary[]>([]);
+  readonly recommendations = signal<RecommendationResponse | null>(null);
+  readonly totalJobs = signal<number | null>(null);
+  readonly postedAgo = postedAgo;
 
-  readonly hasCv = this.store.hasCv;
-  readonly cvProfile = this.store.cvProfile;
-  readonly rankedMatches = computed(
-    () => this.data()?.recommendations?.recommendations ?? [],
+  readonly firstName = computed(() => {
+    const name = this.auth.user()?.full_name?.trim();
+    return name ? name.split(/\s+/)[0] : '';
+  });
+  readonly ats = computed(() => this.store.cvProfile()?.ats ?? null);
+  readonly atsTone = computed<'strong' | 'moderate' | 'weak'>(() => {
+    const score = this.ats()?.score ?? 0;
+    return score >= 75 ? 'strong' : score >= 50 ? 'moderate' : 'weak';
+  });
+  /** ATS scores of past analyses, oldest first, for the trend line. */
+  readonly trend = computed(() =>
+    this.history()
+      .filter((item) => typeof item.ats_score === 'number')
+      .map((item) => item.ats_score as number)
+      .reverse()
+      .slice(-8),
   );
-  readonly topMatches = computed(() => this.rankedMatches().slice(0, 3));
-  readonly rankedCount = computed(() => this.rankedMatches().length);
-  readonly evaluatedCount = computed(
-    () => this.data()?.recommendations?.evaluated_count ?? 0,
-  );
-  readonly jobsAvailable = computed(() => this.data()?.jobs.total ?? 0);
-  readonly apiStatus = computed(() =>
-    this.data()?.health.status === 'ok' ? 'Online' : 'Unknown',
-  );
-  readonly recentActivity = computed(() => this.store.recentActivity().slice(0, 4));
-  readonly analysisDate = computed(() => formatDate(this.store.cvUpdatedAt()));
+  readonly trendPoints = computed(() => {
+    const values = this.trend();
+    if (values.length < 2) {
+      return '';
+    }
+    const step = 100 / (values.length - 1);
+    return values.map((value, index) => `${(index * step).toFixed(1)},${(36 - (value / 100) * 32).toFixed(1)}`).join(' ');
+  });
+  readonly trendDelta = computed(() => {
+    const values = this.trend();
+    return values.length >= 2 ? values[values.length - 1] - values[0] : null;
+  });
 
-  readonly classificationLabel = classificationLabel;
-  readonly classificationTone = classificationTone;
-  readonly formatPercent = formatPercent;
-  readonly formatDateTime = formatDateTime;
+  readonly steps = computed<JourneyStep[]>(() => {
+    const hasCv = this.store.hasCv();
+    const score = this.ats()?.score ?? 0;
+    const counts = this.applications.counts();
+    return [
+      {
+        id: 'cv', icon: 'upload', title: 'Add your CV',
+        text: 'Upload a PDF or Word file, or paste the text.',
+        done: hasCv, cta: 'Add my CV', link: '/cv',
+      },
+      {
+        id: 'ats', icon: 'target', title: `Reach an ATS score of ${ATS_TARGET}+`,
+        text: hasCv ? `You are at ${score}. Follow the top fixes below.` : 'Your score appears right after the upload.',
+        done: hasCv && score >= ATS_TARGET, cta: 'See my fixes', link: '/cv',
+      },
+      {
+        id: 'builder', icon: 'edit', title: 'Polish it in the CV builder',
+        text: 'Edit with a live preview and download an ATS-safe Word or PDF file.',
+        done: this.resumes().length > 0, cta: 'Open the builder', link: '/editor',
+      },
+      {
+        id: 'save', icon: 'bookmark', title: 'Save jobs that fit',
+        text: 'Browse real openings in Tunisia and bookmark the best matches.',
+        done: this.applications.items().length > 0, cta: 'Browse jobs', link: '/jobs',
+      },
+      {
+        id: 'apply', icon: 'arrow-right', title: 'Apply and track',
+        text: 'Apply on the employer site, then move the job to "Applied".',
+        done: counts.applied + counts.interview + counts.offer + counts.rejected > 0,
+        cta: 'Open my tracker', link: '/applications',
+      },
+    ];
+  });
+  readonly completed = computed(() => this.steps().filter((step) => step.done).length);
+  readonly nextStep = computed(() => this.steps().find((step) => !step.done) ?? null);
+  readonly topFixes = computed(() => (this.ats()?.top_fixes ?? []).slice(0, 3));
+  readonly bestMatches = computed(() => (this.recommendations()?.recommendations ?? []).slice(0, 5));
 
   constructor() {
     this.load();
@@ -81,59 +124,54 @@ export class DashboardPage {
 
   load(): void {
     this.loading.set(true);
-    this.error.set(null);
-
     const profile = this.store.cvProfile();
-    const resumeText = this.store.resumeText();
     const preferences = this.store.preferences();
-    let recommendationRequest: RecommendationRequest | null = null;
-
+    let request: RecommendationRequest | null = null;
     if (profile) {
-      recommendationRequest = {
+      request = {
         resume_id: profile.profile.resume_id,
         resume_category: profile.profile.category,
         experience_evidence: profile.profile.experience_evidence,
         job_category: preferences.preferredCategory || null,
-        limit: preferences.recommendationLimit,
+        limit: 5,
         candidate_pool_size: preferences.candidatePoolSize,
       };
-
-      if (resumeText) {
-        recommendationRequest.resume_text = resumeText;
+      const text = this.store.resumeText();
+      if (text) {
+        request.resume_text = text;
       } else {
-        recommendationRequest.resume_profile = profile.profile;
+        request.resume_profile = profile.profile;
       }
     }
-
-    const recommendations$ = recommendationRequest
-      ? this.api.getRecommendations(recommendationRequest)
-      : of(null);
-
+    // Each panel degrades on its own: one failing request must not blank the page.
     forkJoin({
-      health: this.api.health(),
-      jobs: this.api.listJobs({ limit: 1 }),
-      recommendations: recommendations$,
+      history: profile ? this.api.getCvHistory(10).pipe(catchError(() => of(null))) : of(null),
+      resumes: this.api.listResumes().pipe(catchError(() => of(null))),
+      recommendations: request
+        ? this.api.getRecommendations(request).pipe(catchError(() => of(null)))
+        : of(null),
+      jobs: this.api.listJobs({ limit: 1 }).pipe(catchError(() => of(null))),
+      applications: this.applications.load().pipe(catchError(() => of(null))),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => {
-          this.data.set(result);
-          this.loading.set(false);
-        },
-        error: (error: unknown) => {
-          this.error.set(toApiError(error));
-          this.loading.set(false);
-        },
+      .subscribe((result) => {
+        this.history.set(result.history?.items ?? []);
+        this.resumes.set(result.resumes?.items ?? []);
+        this.recommendations.set(result.recommendations);
+        this.totalJobs.set(result.jobs?.total ?? null);
+        this.loading.set(false);
       });
   }
 
-  activityIcon(activity: RecentActivity) {
-    if (activity.type === 'cv_analysis') {
-      return 'cv' as const;
-    }
-    if (activity.type === 'job_match') {
-      return 'matches' as const;
-    }
-    return 'jobs' as const;
+  percent(value: number): number {
+    return Math.round(value * 100);
+  }
+
+  tone(value: number): string {
+    return value >= 0.75 ? 'strong' : value >= 0.4 ? 'moderate' : 'weak';
+  }
+
+  toggleSave(job: JobSummary): void {
+    this.applications.toggle(job.job_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
   }
 }

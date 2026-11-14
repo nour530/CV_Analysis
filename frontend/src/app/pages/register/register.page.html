@@ -1,18 +1,35 @@
 <main class="auth-page">
+  <aside class="auth-aside" aria-hidden="true">
+    <a class="auth-aside__brand" routerLink="/" tabindex="-1">
+      <span class="auth-brand__mark">JM</span> JobMatch AI
+    </a>
+    <div class="auth-aside__body">
+      <h2>Land more interviews with a CV that ATS can read.</h2>
+      <ul>
+        <li><span>✓</span> ATS score with a fix for every problem</li>
+        <li><span>✓</span> CV builder with Word and PDF export</li>
+        <li><span>✓</span> Real jobs in Tunisia, matched to your CV</li>
+      </ul>
+      <div class="auth-aside__card">
+        <span class="auth-aside__score">87</span>
+        <div>
+          <strong>Good — 2 quick fixes</strong>
+          <p>Add figures to 3 achievements · Add your LinkedIn</p>
+        </div>
+      </div>
+    </div>
+    <p class="auth-aside__foot">Free · Your CV stays private</p>
+  </aside>
   <section class="auth-shell" aria-labelledby="register-title">
-    <a class="auth-brand" routerLink="/login" aria-label="JobMatch AI">
+    <a class="auth-brand" routerLink="/" aria-label="JobMatch AI home">
       <span class="auth-brand__mark" aria-hidden="true">JM</span>
-      <span>
-        <strong>JobMatch AI</strong>
-        <small>Career intelligence</small>
-      </span>
+      <strong>JobMatch AI</strong>
     </a>
 
     <div class="auth-card">
-      <p class="eyebrow">Create account</p>
-      <h1 id="register-title">Start your private workspace</h1>
+      <h1 id="register-title">Create your free account</h1>
       <p class="auth-copy">
-        Save CV analyses, matching history, and preferences to your own account.
+        Get your ATS score in about 30 seconds. No credit card needed.
       </p>
 
       @if (error(); as apiError) {
@@ -105,8 +122,5 @@
       </p>
     </div>
 
-    <p class="auth-footnote">
-      Passwords are hashed with Argon2id. JobMatch AI never stores your original CV file.
-    </p>
   </section>
 </main>

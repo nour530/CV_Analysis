@@ -7,13 +7,29 @@ import {
 import { inject, Injectable } from '@angular/core';
 import { catchError, Observable, filter, map, tap, throwError, timeout } from 'rxjs';
 import { API_BASE_URL } from './api.config';
+import {
+  ApplicationListResponse,
+  ApplicationStatus,
+  ApplicationUpdateRequest,
+  CvSuggestionRequest,
+  JobApplication,
+  MatchScoresResponse,
+  CvSuggestionResponse,
+  ResumeCreateRequest,
+  ResumeListResponse,
+  ResumeResponse,
+  ResumeUpdateRequest,
+} from './resume.models';
 import { toApiError } from './api-error';
 import {
+  AtsCheckRequest,
+  AtsReport,
   CVAnalysisHistoryResponse,
   CVAnalysisRequest,
   CVProfileResponse,
   HealthResponse,
   JobDetailResponse,
+  JobFacetsResponse,
   JobListParams,
   JobListResponse,
   JobMatchRequest,
@@ -149,6 +165,15 @@ export class JobMatchApiService {
     if (params.q?.trim()) {
       httpParams = httpParams.set('q', params.q.trim());
     }
+    if (params.workplace) {
+      httpParams = httpParams.set('workplace', params.workplace);
+    }
+    if (params.location?.trim()) {
+      httpParams = httpParams.set('location', params.location.trim());
+    }
+    if (params.company?.trim()) {
+      httpParams = httpParams.set('company', params.company.trim());
+    }
     if (params.offset !== undefined) {
       httpParams = httpParams.set('offset', String(params.offset));
     }
@@ -160,6 +185,113 @@ export class JobMatchApiService {
       this.http.get<JobListResponse>(`${this.baseUrl}${API_PREFIX}/jobs`, {
         params: httpParams,
       }),
+    );
+  }
+
+  checkAts(request: AtsCheckRequest = {}): Observable<AtsReport> {
+    return this.request(
+      this.http.post<AtsReport>(`${this.baseUrl}${API_PREFIX}/cv/ats`, request),
+    );
+  }
+
+  listApplications(): Observable<ApplicationListResponse> {
+    return this.request(
+      this.http.get<ApplicationListResponse>(`${this.baseUrl}${API_PREFIX}/applications`),
+    );
+  }
+
+  saveApplication(jobId: string, status: ApplicationStatus = 'saved'): Observable<JobApplication> {
+    return this.request(
+      this.http.post<JobApplication>(`${this.baseUrl}${API_PREFIX}/applications`, {
+        job_id: jobId,
+        status,
+      }),
+    );
+  }
+
+  updateApplication(id: string, request: ApplicationUpdateRequest): Observable<JobApplication> {
+    return this.request(
+      this.http.patch<JobApplication>(
+        `${this.baseUrl}${API_PREFIX}/applications/${encodeURIComponent(id)}`,
+        request,
+      ),
+    );
+  }
+
+  deleteApplication(id: string): Observable<void> {
+    return this.request(
+      this.http.delete<void>(`${this.baseUrl}${API_PREFIX}/applications/${encodeURIComponent(id)}`),
+    );
+  }
+
+  matchScores(jobIds: string[]): Observable<MatchScoresResponse> {
+    return this.request(
+      this.http.post<MatchScoresResponse>(`${this.baseUrl}${API_PREFIX}/matches/scores`, {
+        job_ids: jobIds.slice(0, 50),
+      }),
+    );
+  }
+
+  listResumes(): Observable<ResumeListResponse> {
+    return this.request(this.http.get<ResumeListResponse>(`${this.baseUrl}${API_PREFIX}/resumes`));
+  }
+
+  createResume(request: ResumeCreateRequest = {}): Observable<ResumeResponse> {
+    return this.request(
+      this.http.post<ResumeResponse>(`${this.baseUrl}${API_PREFIX}/resumes`, request),
+    );
+  }
+
+  getResume(id: string): Observable<ResumeResponse> {
+    return this.request(
+      this.http.get<ResumeResponse>(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}`),
+    );
+  }
+
+  updateResume(id: string, request: ResumeUpdateRequest): Observable<ResumeResponse> {
+    return this.request(
+      this.http.put<ResumeResponse>(
+        `${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}`,
+        request,
+      ),
+    );
+  }
+
+  deleteResume(id: string): Observable<void> {
+    return this.request(
+      this.http.delete<void>(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}`),
+    );
+  }
+
+  checkResumeAts(id: string, jobId: string | null = null): Observable<AtsReport> {
+    return this.request(
+      this.http.post<AtsReport>(
+        `${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/ats`,
+        { job_id: jobId },
+      ),
+    );
+  }
+
+  suggestResume(id: string, request: CvSuggestionRequest): Observable<CvSuggestionResponse> {
+    return this.request(
+      this.http.post<CvSuggestionResponse>(
+        `${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/suggestions`,
+        request,
+      ),
+    );
+  }
+
+  exportResumeDocx(id: string): Observable<Blob> {
+    return this.request(
+      this.http.get(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/export.docx`, {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  getJobFacets(): Observable<JobFacetsResponse> {
+    return this.request(
+      this.http.get<JobFacetsResponse>(`${this.baseUrl}${API_PREFIX}/jobs/facets`),
     );
   }
 

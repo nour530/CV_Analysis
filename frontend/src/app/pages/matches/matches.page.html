@@ -1,8 +1,7 @@
 <div class="page">
   <app-page-header
-    eyebrow="Explainable matching"
-    title="My Matches"
-    description="Review the scores, matched skills, gaps, and recommendations produced by the FastAPI matching service."
+    title="Match analysis"
+    description="See exactly why each job fits you: the skills you have, the ones you're missing, and what to do about it."
   >
     <a class="btn btn--secondary" routerLink="/jobs">
       <app-icon name="jobs" [size]="17" />
@@ -18,7 +17,7 @@
     <app-state-panel
       variant="empty"
       title="Add your CV to generate matches"
-      message="The matching API needs your CV text or analysed profile before it can rank roles."
+      message="Add your CV first, then we can rank jobs by how well they fit you."
       actionLabel="Add your CV"
       (action)="goToCv()"
     />
@@ -27,11 +26,10 @@
       <div class="ai-optin__header">
         <span class="ai-optin__icon"><app-icon name="sparkle" [size]="21" /></span>
         <div>
-          <p class="eyebrow">Optional</p>
-          <h2 class="card__title">AI explanations</h2>
+          <h2 class="card__title">Want a written explanation?</h2>
           <p class="card__subtitle">
-            Ask OpenAI for a written explanation of an existing match. Compatibility
-            scores, skills, and gaps remain deterministic local results.
+            Our AI can explain a match in plain words. Your score and skill gaps
+            stay exactly the same either way.
           </p>
         </div>
       </div>
@@ -43,10 +41,10 @@
           (change)="setIncludeLlm($any($event.target).checked)"
         />
         <span>
-          <strong>Enable optional OpenAI explanations</strong>
+          <strong>Add AI explanations</strong>
           <small>
-            Off by default. The backend only attempts remote analysis when both
-            request flags are true and the server allows it.
+            Off by default. Your CV and the job text are sent to the AI provider
+            only after you agree below.
           </small>
         </span>
       </label>
@@ -166,33 +164,32 @@
       <app-state-panel
         variant="loading"
         title="Ranking your matches"
-        message="The API is comparing your skills and experience against the candidate pool."
+        message="Comparing your skills and experience with current openings…"
       />
     } @else if (!rankedItems().length) {
       <app-state-panel
         variant="empty"
-        title="No recommendations returned"
-        message="Try widening the candidate pool or changing the preferred job category in Settings."
+        title="No matches yet"
+        message="Try comparing more jobs or removing the preferred category in Settings."
         actionLabel="Open settings"
         (action)="goToSettings()"
       />
     } @else {
       <div class="row row--between matches-summary">
         <div>
-          <h2 class="matches-summary__title">Ranked matches</h2>
+          <h2 class="matches-summary__title">Your best matches</h2>
           <p class="muted small">
-            {{ rankedItems().length }} returned · {{ evaluatedCount() | number }}
-            evaluated from {{ candidateCount() | number }} candidates
+            Top {{ rankedItems().length }} out of {{ candidateCount() | number }} current jobs
           </p>
         </div>
-        <a class="link" routerLink="/settings">Matching settings</a>
+        <a class="link" routerLink="/settings">Preferences</a>
       </div>
 
       @if (warnings().length) {
         <div class="alert alert--warning">
           <app-icon name="alert" [size]="18" />
           <div>
-            <strong>API notes</strong>
+            <strong>Good to know</strong>
             <ul class="warning-list">
               @for (warning of warnings(); track warning) {
                 <li>{{ warning }}</li>
