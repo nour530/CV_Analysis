@@ -60,6 +60,8 @@ export interface UserSettings {
   candidate_pool_size: number;
   preferred_category: string | null;
   allow_remote_analysis: boolean;
+  target_domain?: string | null;
+  target_role?: string | null;
   updated_at: string | null;
 }
 
@@ -68,6 +70,8 @@ export interface UserSettingsUpdate {
   candidate_pool_size: number;
   preferred_category: string | null;
   allow_remote_analysis: boolean;
+  target_domain?: string | null;
+  target_role?: string | null;
 }
 
 export interface ProfileSkill {

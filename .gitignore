@@ -19,6 +19,7 @@ htmlcov/
 
 # Machine Learning
 *.joblib
+!ai-engine/data/models/domain_classifier.joblib
 *.pkl
 *.h5
 
@@ -49,3 +50,6 @@ ai-engine/data/processed/
 
 # Local preview launch config (machine-specific paths)
 .claude/launch.json
+
+# ESCO API raw page cache (large; regenerate with data_analysis/05_import_esco.py)
+ai-engine/data/raw/esco/

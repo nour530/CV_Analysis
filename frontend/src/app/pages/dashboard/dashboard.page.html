@@ -123,6 +123,54 @@
       }
     </section>
 
+
+    @if (career(); as insights) {
+      @if (insights.available && insights.has_cv) {
+        <section class="card card--padded db-career" aria-labelledby="career-title">
+          <div class="db-card-head">
+            <h2 id="career-title">Your career direction</h2>
+            <a class="link" routerLink="/settings">{{ insights.target_role || insights.target_domain ? 'Edit goal' : 'Set my goal' }}</a>
+          </div>
+          @if (insights.detected_domains.length) {
+            <p class="db-career__fields">
+              Your CV points to
+              @for (field of insights.detected_domains.slice(0, 2); track field.id; let last = $last) {
+                <strong>{{ field.label }}</strong>@if (!last) { and }
+              }.
+              @if (insights.target_domain) { Your goal: <strong>{{ insights.target_domain.label }}</strong>. }
+            </p>
+          }
+          @if (insights.target_role_fit; as target) {
+            <div class="db-role db-role--target">
+              <div class="db-role__head">
+                <strong>{{ target.title }}</strong>
+                <span class="db-role__fit">{{ percent(target.fit) }}% ready</span>
+              </div>
+              @if (target.skills_to_build.length) {
+                <p class="db-role__label">Skills to build</p>
+                <div class="chip-list">
+                  @for (skill of target.skills_to_build.slice(0, 6); track skill) { <span class="tag">{{ skill }}</span> }
+                </div>
+              }
+            </div>
+          }
+          @if (insights.suggested_roles.length) {
+            <p class="db-role__label">Roles that fit your CV</p>
+            <ul class="db-roles">
+              @for (role of insights.suggested_roles.slice(0, 4); track role.uri) {
+                <li>
+                  <span class="db-role__fit">{{ percent(role.fit) }}%</span>
+                  <span class="db-roles__title">{{ role.title }}</span>
+                  @if (role.domain_label) { <span class="muted small">{{ role.domain_label }}</span> }
+                </li>
+              }
+            </ul>
+          }
+          <p class="db-career__credit">Roles and skills from ESCO, the European Commission's classification of occupations.</p>
+        </section>
+      }
+    }
+
     <section class="card card--padded db-tracker" aria-labelledby="tracker-title">
       <div class="db-card-head">
         <h2 id="tracker-title">Applications</h2>

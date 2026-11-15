@@ -1,0 +1,13 @@
+uri,label_en,label_fr,alt_en,alt_fr,skill_type,reuse_level,group_en
+s:python,Python (computer programming),Python (programmation informatique),Python,,knowledge,sector-specific skills and competences,
+s:sql,SQL,SQL,structured query language,,knowledge,sector-specific skills and competences,
+s:dataviz,data visualisation software,logiciel de visualisation de données,Power BI;Tableau,,knowledge,sector-specific skills and competences,
+s:stats,statistics,statistiques,,,knowledge,cross-sector skills and competences,
+s:ml,machine learning,apprentissage automatique,,,knowledge,sector-specific skills and competences,
+s:care,provide nursing care,dispenser des soins infirmiers,patient care,soins aux patients,skill,occupation-specific skills and competences,
+s:pharma,pharmacology,pharmacologie,,,knowledge,sector-specific skills and competences,
+s:hygiene,infection control,contrôle des infections,hygiene procedures,,knowledge,sector-specific skills and competences,
+s:acct,accounting techniques,techniques comptables,bookkeeping,comptabilité,knowledge,sector-specific skills and competences,
+s:tax,tax legislation,législation fiscale,,fiscalité,knowledge,sector-specific skills and competences,
+s:report,financial statements,états financiers,,,knowledge,sector-specific skills and competences,
+s:team,work in teams,travailler en équipe,teamwork,,skill,transversal skills and competences,

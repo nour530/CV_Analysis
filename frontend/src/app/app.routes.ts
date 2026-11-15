@@ -69,7 +69,7 @@ export const routes: Routes = [
   },
   {
     path: 'matches',
-    title: 'My Matches | JobMatch AI',
+    title: 'Match analysis | JobMatch AI',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/matches/matches.page').then(

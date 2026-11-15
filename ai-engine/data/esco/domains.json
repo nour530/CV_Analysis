@@ -1,0 +1,19 @@
+{
+  "description": "Career fields used by JobMatch AI. Each field groups ISCO-08 sub-major groups (first two digits of the ISCO code attached to every ESCO occupation). Labels are shown to users in English and French.",
+  "domains": [
+    {"id": "it", "en": "IT, software & data", "fr": "Informatique, logiciel et données", "isco": ["25", "35"]},
+    {"id": "engineering", "en": "Engineering & industry", "fr": "Ingénierie et industrie", "isco": ["21", "31"]},
+    {"id": "manufacturing", "en": "Production, operators & assembly", "fr": "Production, opérateurs et assemblage", "isco": ["81", "82", "93"]},
+    {"id": "trades", "en": "Skilled trades & construction", "fr": "Métiers techniques et BTP", "isco": ["71", "72", "73", "74", "75"]},
+    {"id": "health", "en": "Health & care", "fr": "Santé et soins", "isco": ["22", "32", "53"]},
+    {"id": "education", "en": "Education & training", "fr": "Éducation et formation", "isco": ["23"]},
+    {"id": "finance", "en": "Finance, accounting & banking", "fr": "Finance, comptabilité et banque", "isco": ["241", "331", "431"]},
+    {"id": "business", "en": "Management, HR & administration", "fr": "Management, RH et administration", "isco": ["11", "12", "13", "14", "242", "333", "334", "335", "41", "44"]},
+    {"id": "sales", "en": "Sales, marketing & customer service", "fr": "Vente, marketing et relation client", "isco": ["243", "332", "42", "52", "95"]},
+    {"id": "logistics", "en": "Logistics, transport & supply chain", "fr": "Logistique, transport et supply chain", "isco": ["432", "83", "96"]},
+    {"id": "hospitality", "en": "Hospitality, tourism & food", "fr": "Hôtellerie, tourisme et restauration", "isco": ["51", "91", "94", "1411", "1412", "3434"]},
+    {"id": "legal_social", "en": "Law, social work & public service", "fr": "Droit, social et service public", "isco": ["26", "34", "54", "0"]},
+    {"id": "creative", "en": "Arts, design & media", "fr": "Arts, design et médias", "isco": ["264", "265", "343", "2166"]},
+    {"id": "agriculture", "en": "Agriculture & environment", "fr": "Agriculture et environnement", "isco": ["61", "62", "63", "92"]}
+  ]
+}

@@ -8,6 +8,7 @@ export type IconName =
   | 'settings'
   | 'menu'
   | 'close'
+  | 'download'
   | 'upload'
   | 'search'
   | 'arrow-right'
@@ -53,6 +54,7 @@ const ICON_PATHS: Record<IconName, string[]> = {
   ],
   menu: ['M4 7h16', 'M4 12h16', 'M4 17h16'],
   close: ['M6 6l12 12', 'M18 6L6 18'],
+  download: ['M12 4v11', 'M7 10l5 5 5-5', 'M4 19.5h16'],
   upload: ['M12 16V4', 'M7 9l5-5 5 5', 'M4 16v3h16v-3'],
   search: ['M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12z', 'M15 15l5 5'],
   'arrow-right': ['M5 12h14', 'M13 6l6 6-6 6'],

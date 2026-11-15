@@ -1,17 +1,32 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'jobmatch.theme';
-const ORDER: ThemeChoice[] = ['system', 'light', 'dark'];
 
-/** Light/dark theme. "system" follows the operating system setting. */
+/**
+ * Light/dark theme. Until the user picks one, the theme follows the system.
+ * The toggle always switches to the opposite of what is currently shown.
+ */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly choice = signal<ThemeChoice>(readChoice());
+  private readonly systemDark = signal(prefersDark());
+
+  /** True when the page is currently shown in dark mode. */
+  readonly isDark = computed(() =>
+    this.choice() === 'system' ? this.systemDark() : this.choice() === 'dark',
+  );
 
   constructor() {
     applyTheme(this.choice());
+    try {
+      window
+        .matchMedia('(prefers-color-scheme: dark)')
+        .addEventListener('change', (event) => this.systemDark.set(event.matches));
+    } catch {
+      // matchMedia is unavailable in some test environments.
+    }
   }
 
   set(choice: ThemeChoice): void {
@@ -28,13 +43,21 @@ export class ThemeService {
     }
   }
 
-  cycle(): void {
-    const next = ORDER[(ORDER.indexOf(this.choice()) + 1) % ORDER.length];
-    this.set(next);
+  toggle(): void {
+    this.set(this.isDark() ? 'light' : 'dark');
   }
 
+  /** Accessible label describing what the button does. */
   label(): string {
-    return { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' }[this.choice()];
+    return this.isDark() ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+
+function prefersDark(): boolean {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {
+    return false;
   }
 }
 

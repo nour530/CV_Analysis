@@ -17,7 +17,7 @@ import { IconComponent } from '../../shared/components/icon/icon';
       </p>
       <div class="row">
         <a class="btn btn--primary" routerLink="/dashboard">Dashboard</a>
-        <a class="btn btn--secondary" routerLink="/jobs">Job Explorer</a>
+        <a class="btn btn--secondary" routerLink="/jobs">Browse jobs</a>
       </div>
     </div>
   `,

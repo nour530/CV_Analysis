@@ -117,9 +117,8 @@ class LocalMatcher:
                         category=requirement.category,
                         importance="required",
                         reason=(
-                            f"'{requirement.skill}' is listed as a required skill in "
-                            "the job profile but no equivalent canonical skill was "
-                            "found in the résumé profile."
+                            f"The job requires '{requirement.skill}', but we could not "
+                            "find it in your CV."
                         ),
                         confidence=requirement.confidence,
                     )
@@ -408,13 +407,13 @@ class LocalMatcher:
                 overlap_value,
                 weights["skill_overlap"],
                 f"{len(set(job_by_key) & set(resume_by_key))}/{len(job_by_key)} "
-                "job skills are present in the résumé profile.",
+                "of the job's skills appear in your CV.",
             ),
             self._component(
                 "semantic_similarity",
                 semantic_value,
                 weights["semantic_similarity"],
-                "Local TF-IDF cosine similarity over word and character n-grams.",
+                "How closely the wording of your CV matches the job description.",
             ),
             self._component(
                 "category_compatibility",

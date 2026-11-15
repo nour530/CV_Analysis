@@ -12,6 +12,7 @@ data/*.db
 data/audit/
 data/evaluation/
 data/processed/
+data/raw/
 data/features/*
 !data/features/job_features.csv
 !data/features/skills_dictionary.csv

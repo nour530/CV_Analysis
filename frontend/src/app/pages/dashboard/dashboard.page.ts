@@ -9,6 +9,7 @@ import {
   RecommendationResponse,
 } from '../../core/api.models';
 import { JobMatchApiService } from '../../core/api.service';
+import { CareerInsights } from '../../core/career.models';
 import { ApplicationsStore } from '../../core/applications.store';
 import { AuthService } from '../../core/auth.service';
 import { postedAgo } from '../../core/formatters';
@@ -48,6 +49,7 @@ export class DashboardPage {
   readonly resumes = signal<ResumeSummary[]>([]);
   readonly recommendations = signal<RecommendationResponse | null>(null);
   readonly totalJobs = signal<number | null>(null);
+  readonly career = signal<CareerInsights | null>(null);
   readonly postedAgo = postedAgo;
 
   readonly firstName = computed(() => {
@@ -152,6 +154,7 @@ export class DashboardPage {
         : of(null),
       jobs: this.api.listJobs({ limit: 1 }).pipe(catchError(() => of(null))),
       applications: this.applications.load().pipe(catchError(() => of(null))),
+      career: this.api.getCareerInsights().pipe(catchError(() => of(null))),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
@@ -159,6 +162,7 @@ export class DashboardPage {
         this.resumes.set(result.resumes?.items ?? []);
         this.recommendations.set(result.recommendations);
         this.totalJobs.set(result.jobs?.total ?? null);
+        this.career.set(result.career);
         this.loading.set(false);
       });
   }

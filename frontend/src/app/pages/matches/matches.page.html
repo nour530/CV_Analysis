@@ -71,7 +71,7 @@
 
       <p class="ai-optin__note">
         <app-icon name="shield" [size]="15" />
-        Scores are always local. AI text never changes or recalculates your score.
+        Your score is always calculated by JobMatch AI. The AI only adds words; it never changes the score.
       </p>
     </section>
 
@@ -259,7 +259,7 @@
                 (click)="setFeaturedJob(item.job.job_id)"
               >
                 <app-icon name="matches" [size]="14" />
-                Focus this match
+                Show only this job
               </button>
               @if (includeLlm()) {
                 <button

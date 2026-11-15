@@ -298,6 +298,10 @@ def update_user_settings(
     settings.candidate_pool_size = payload.candidate_pool_size
     settings.preferred_category = payload.preferred_category
     settings.allow_remote_analysis = payload.allow_remote_analysis
+    if "target_domain" in payload.model_fields_set:
+        settings.target_domain = payload.target_domain
+    if "target_role" in payload.model_fields_set:
+        settings.target_role = payload.target_role
     settings.updated_at = utcnow()
     db.commit()
     db.refresh(settings)

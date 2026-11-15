@@ -87,3 +87,17 @@
   font-size: 0.9rem;
   font-weight: 650;
 }
+
+.db-career { grid-column: 1 / -1; }
+.db-career__fields { margin: 0 0 0.9rem; color: var(--color-muted-strong); line-height: 1.55; }
+.db-career__fields strong { color: var(--color-heading); }
+.db-role { padding: 0.9rem 1rem; border-radius: var(--radius-md); background: var(--color-surface-muted); margin-bottom: 0.9rem; }
+.db-role--target { border: 1px solid var(--color-primary-border); background: var(--color-primary-soft); }
+.db-role__head { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.db-role__fit { flex-shrink: 0; padding: 0.1rem 0.55rem; border-radius: 999px; background: var(--color-surface); color: var(--color-primary); font-size: 0.78rem; font-weight: 800; }
+.db-role__label { margin: 0.6rem 0 0.4rem; color: var(--color-muted); font-size: 0.78rem; font-weight: 700; }
+.db-roles { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+.db-roles li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.db-roles__title { color: var(--color-heading); font-weight: 650; }
+.db-career__credit { margin: 0.9rem 0 0; color: var(--color-muted); font-size: 0.72rem; }
+.chip-list { display: flex; flex-wrap: wrap; gap: 0.35rem; }

@@ -13,6 +13,15 @@ ATS CV checker, CV builder and job matching for job seekers in Tunisia.
   (`ai-engine/docs/real-jobs.md`).
 - **Application tracker:** save jobs and move them from Saved to Applied,
   Interview and Offer.
+- **Career fields beyond IT:** about 3,000 occupations and 13,500 skills from
+  ESCO, in English and French, grouped into 14 fields (health, finance, sales,
+  logistics, hospitality, trades and more). They are used to detect your field,
+  suggest roles and show the skills you're missing for a target role
+  (`ai-engine/docs/career-fields.md`).
+- **Career assistant:** a chat powered by Anthropic Claude that answers job,
+  CV and interview questions. If you allow it, it is personalised with your CV,
+  career goal and tracked applications. Off by default
+  (`ai-engine/docs/assistant.md`).
 - Public landing page, guided dashboard, light and dark themes, responsive
   layout down to phone width.
 
@@ -190,3 +199,7 @@ odd-numbered Node versions such as Node 25.
   then sign in. This avoids a direct registration account-existence oracle.
   Email verification is not implemented, so combined register/login probing
   remains a residual enumeration channel.
+
+## Attribution
+
+This service uses the ESCO classification of the European Commission.

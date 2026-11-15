@@ -127,6 +127,8 @@ class UserSettingsResponse(BaseModel):
     candidate_pool_size: int = Field(ge=1, le=200)
     preferred_category: str | None = Field(default=None, max_length=120)
     allow_remote_analysis: bool = False
+    target_domain: str | None = Field(default=None, max_length=40)
+    target_role: str | None = Field(default=None, max_length=160)
     updated_at: datetime | None = None
 
     @classmethod
@@ -136,6 +138,8 @@ class UserSettingsResponse(BaseModel):
             candidate_pool_size=settings.candidate_pool_size,
             preferred_category=settings.preferred_category,
             allow_remote_analysis=settings.allow_remote_analysis,
+            target_domain=settings.target_domain,
+            target_role=settings.target_role,
             updated_at=settings.updated_at,
         )
 
@@ -147,8 +151,11 @@ class UserSettingsUpdate(BaseModel):
     candidate_pool_size: int = Field(ge=1, le=200)
     preferred_category: str | None = Field(default=None, max_length=120)
     allow_remote_analysis: bool = False
+    # Optional: only applied when sent, so older clients cannot erase them.
+    target_domain: str | None = Field(default=None, max_length=40)
+    target_role: str | None = Field(default=None, max_length=160)
 
-    @field_validator("preferred_category")
+    @field_validator("preferred_category", "target_domain", "target_role")
     @classmethod
     def normalize_category(cls, value: str | None) -> str | None:
         if value is None:

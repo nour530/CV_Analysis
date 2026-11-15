@@ -66,6 +66,45 @@
         </form>
       </section>
 
+      <section class="card card--padded" aria-labelledby="goal-title">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Career goal</p>
+            <h2 class="card__title" id="goal-title">What do you want to work in?</h2>
+            <p class="card__subtitle">
+              Your field and target role personalise job suggestions, skill gaps and the career assistant.
+            </p>
+          </div>
+        </div>
+        <form class="form-grid" (submit)="$event.preventDefault(); saveGoal()">
+          <div class="field">
+            <label for="goal-domain">Field</label>
+            <select id="goal-domain" class="select" [value]="goalDomain()" (change)="setGoalDomain($event)">
+              <option value="">Not decided yet</option>
+              @for (domain of domains(); track domain.id) {
+                <option [value]="domain.id">{{ domain.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label for="goal-role">Target role</label>
+            <input id="goal-role" class="input" list="goal-role-options" [value]="goalRole()" (input)="setGoalRole($event)"
+                   maxlength="160" placeholder="e.g. Quality engineer, Comptable, Nurse" autocomplete="off" />
+            <datalist id="goal-role-options">
+              @for (occupation of roleSuggestions(); track occupation.uri) {
+                <option [value]="occupation.title"></option>
+              }
+            </datalist>
+          </div>
+          <div class="field field--full row">
+            <button type="submit" class="btn btn--primary btn--sm" [disabled]="goalSaving()">
+              {{ goalSaving() ? 'Saving…' : 'Save career goal' }}
+            </button>
+            <span class="hint">Roles come from ESCO, the European Commission's classification of occupations.</span>
+          </div>
+        </form>
+      </section>
+
       <section class="card card--padded">
         <div class="card__header">
           <div>
@@ -123,7 +162,7 @@
                 maxlength="120"
               />
               <span class="hint">
-                Optional exact category filter, such as “Data Science”.
+                Optional. Leave empty to see jobs from every field.
               </span>
             </div>
           </div>
@@ -131,8 +170,7 @@
           <label class="checkbox-row">
             <input type="checkbox" formControlName="allowRemoteAnalysis" />
             <span>
-              Allow remote AI explanations when I explicitly request them for an
-              individual match.
+              Allow AI features (CV rewrites, match explanations and the career assistant) to send my CV content to the AI provider.
             </span>
           </label>
 
@@ -181,7 +219,7 @@
                 formControlName="newPassword"
                 autocomplete="new-password"
               />
-              <span class="hint">12–128 characters, three character classes.</span>
+              <span class="hint">At least 12 characters, mixing upper and lower case, numbers or symbols.</span>
             </div>
             <div class="field">
               <label for="confirm-password">Confirm new password</label>
@@ -220,7 +258,7 @@
         <div class="data-notes">
           <p>
             <strong>CV analyses</strong>
-            <span>Extracted profile snapshots and document metadata.</span>
+            <span>The text of your uploaded CVs, their ATS reports and skills.</span>
           </p>
           <p>
             <strong>Matching preferences</strong>

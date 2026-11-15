@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { CareerDomain, Occupation } from '../../core/career.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -74,6 +75,12 @@ export class SettingsPage {
   );
 
   readonly saving = signal(false);
+  readonly domains = signal<CareerDomain[]>([]);
+  readonly goalDomain = signal('');
+  readonly goalRole = signal('');
+  readonly roleSuggestions = signal<Occupation[]>([]);
+  readonly goalSaving = signal(false);
+  private roleTimer: ReturnType<typeof setTimeout> | null = null;
   readonly profileSaving = signal(false);
   readonly passwordSaving = signal(false);
   readonly logoutSaving = signal(false);
@@ -88,6 +95,58 @@ export class SettingsPage {
 
   constructor() {
     this.loadSettings();
+    this.api
+      .getCareerDomains()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (list) => this.domains.set(list.domains), error: () => undefined });
+  }
+
+  setGoalDomain(event: Event): void {
+    this.goalDomain.set((event.target as HTMLSelectElement).value);
+  }
+
+  setGoalRole(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.goalRole.set(value);
+    if (this.roleTimer) {
+      clearTimeout(this.roleTimer);
+    }
+    if (value.trim().length < 2) {
+      this.roleSuggestions.set([]);
+      return;
+    }
+    this.roleTimer = setTimeout(() => {
+      this.api
+        .searchOccupations(value, this.goalDomain() || null)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({ next: (list) => this.roleSuggestions.set(list.occupations), error: () => undefined });
+    }, 250);
+  }
+
+  saveGoal(): void {
+    const value = this.form.getRawValue();
+    this.goalSaving.set(true);
+    this.api
+      .updateUserSettings({
+        recommendation_limit: value.recommendationLimit,
+        candidate_pool_size: value.candidatePoolSize,
+        preferred_category: value.preferredCategory.trim() || null,
+        allow_remote_analysis: value.allowRemoteAnalysis,
+        target_domain: this.goalDomain() || null,
+        target_role: this.goalRole().trim() || null,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.store.applyServerSettings(settings);
+          this.showFeedback('Career goal saved.', 'success');
+          this.goalSaving.set(false);
+        },
+        error: (error: unknown) => {
+          this.showFeedback(toApiError(error).message, 'error');
+          this.goalSaving.set(false);
+        },
+      });
   }
 
   savePreferences(): void {
@@ -303,6 +362,8 @@ export class SettingsPage {
         next: (settings) => {
           this.store.applyServerSettings(settings);
           this.syncForm();
+          this.goalDomain.set(settings.target_domain ?? '');
+          this.goalRole.set(settings.target_role ?? '');
         },
         error: () => undefined,
       });

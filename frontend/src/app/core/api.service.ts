@@ -8,6 +8,14 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, Observable, filter, map, tap, throwError, timeout } from 'rxjs';
 import { API_BASE_URL } from './api.config';
 import {
+  AssistantStatus,
+  CareerDomainList,
+  CareerInsights,
+  ChatHistory,
+  ChatReply,
+  OccupationList,
+} from './career.models';
+import {
   ApplicationListResponse,
   ApplicationStatus,
   ApplicationUpdateRequest,
@@ -232,6 +240,47 @@ export class JobMatchApiService {
     );
   }
 
+  getCareerDomains(lang: 'en' | 'fr' = 'en'): Observable<CareerDomainList> {
+    return this.request(
+      this.http.get<CareerDomainList>(`${this.baseUrl}${API_PREFIX}/career/domains`, {
+        params: new HttpParams().set('lang', lang),
+      }),
+    );
+  }
+
+  searchOccupations(query: string, domain: string | null = null, lang: 'en' | 'fr' = 'en'): Observable<OccupationList> {
+    let params = new HttpParams().set('q', query.trim()).set('lang', lang).set('limit', '8');
+    if (domain) {
+      params = params.set('domain', domain);
+    }
+    return this.request(
+      this.http.get<OccupationList>(`${this.baseUrl}${API_PREFIX}/career/occupations`, { params }),
+    );
+  }
+
+  getCareerInsights(): Observable<CareerInsights> {
+    return this.request(this.http.get<CareerInsights>(`${this.baseUrl}${API_PREFIX}/career/insights`));
+  }
+
+  getAssistantStatus(): Observable<AssistantStatus> {
+    return this.request(this.http.get<AssistantStatus>(`${this.baseUrl}${API_PREFIX}/assistant/status`));
+  }
+
+  getAssistantHistory(): Observable<ChatHistory> {
+    return this.request(this.http.get<ChatHistory>(`${this.baseUrl}${API_PREFIX}/assistant/messages`));
+  }
+
+  sendAssistantMessage(message: string): Observable<ChatReply> {
+    return this.request(
+      this.http.post<ChatReply>(`${this.baseUrl}${API_PREFIX}/assistant/messages`, { message }),
+      120_000,
+    );
+  }
+
+  clearAssistantHistory(): Observable<void> {
+    return this.request(this.http.delete<void>(`${this.baseUrl}${API_PREFIX}/assistant/messages`));
+  }
+
   listResumes(): Observable<ResumeListResponse> {
     return this.request(this.http.get<ResumeListResponse>(`${this.baseUrl}${API_PREFIX}/resumes`));
   }
@@ -289,6 +338,14 @@ export class JobMatchApiService {
     );
   }
 
+  exportResumePdf(id: string): Observable<Blob> {
+    return this.request(
+      this.http.get(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/export.pdf`, {
+        responseType: 'blob',
+      }),
+    );
+  }
+
   getJobFacets(): Observable<JobFacetsResponse> {
     return this.request(
       this.http.get<JobFacetsResponse>(`${this.baseUrl}${API_PREFIX}/jobs/facets`),
@@ -323,9 +380,9 @@ export class JobMatchApiService {
     );
   }
 
-  private request<T>(source: Observable<T>): Observable<T> {
+  private request<T>(source: Observable<T>, timeoutMs: number = REQUEST_TIMEOUT_MS): Observable<T> {
     return source.pipe(
-      timeout(REQUEST_TIMEOUT_MS),
+      timeout(timeoutMs),
       catchError((error: unknown) => throwError(() => toApiError(error))),
     );
   }

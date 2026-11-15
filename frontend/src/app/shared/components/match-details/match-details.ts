@@ -26,7 +26,7 @@ import { IconComponent } from '../icon/icon';
         <section class="match-details__section">
           <div class="section-heading">
             <h4>Score breakdown</h4>
-            <span class="muted">Calculated by the matching API</span>
+            <span class="muted">How your score is built</span>
           </div>
           <div class="meter-list">
             @for (component of scoreComponents(); track component.name) {
@@ -199,7 +199,7 @@ import { IconComponent } from '../icon/icon';
 
       @if (match().uncertainty_indicators.length) {
         <details class="inline-details">
-          <summary>Uncertainty indicators</summary>
+          <summary>Limits of this score</summary>
           <ul class="plain-list">
             @for (item of match().uncertainty_indicators; track $index) {
               <li>

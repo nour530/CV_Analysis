@@ -1,13 +1,13 @@
 <div class="page">
   <a class="link job-back" routerLink="/jobs">
     <app-icon name="chevron-left" [size]="16" />
-    Back to Job Explorer
+    Back to jobs
   </a>
 
   <app-page-header
     [eyebrow]="detail()?.job?.company || detail()?.job?.category || 'Job details'"
     [title]="detail()?.job?.title || 'Job details'"
-    description="Review the role requirements and inspect how your CV fits before running a match."
+    description="Read the role, check how your CV fits, then apply on the employer's site."
   >
     @if (detail(); as loaded) {
       <button type="button" class="btn btn--secondary" [disabled]="applications.isPending(loaded.job.job_id)" [attr.aria-pressed]="applications.isSaved(loaded.job.job_id)" (click)="toggleSave()">

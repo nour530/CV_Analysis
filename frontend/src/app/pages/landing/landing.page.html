@@ -10,11 +10,11 @@
     <a href="#privacy">Privacy</a>
   </nav>
   <div class="lp-nav__actions">
-    <button type="button" class="btn btn--ghost btn--icon" (click)="theme.cycle()" [attr.aria-label]="theme.label() + '. Change theme'" [attr.title]="theme.label()">
-      @switch (theme.choice()) {
-        @case ('light') { <app-icon name="sun" [size]="19" /> }
-        @case ('dark') { <app-icon name="moon" [size]="19" /> }
-        @default { <app-icon name="monitor" [size]="19" /> }
+    <button type="button" class="btn btn--ghost btn--icon" (click)="theme.toggle()" [attr.aria-label]="theme.label()" [attr.title]="theme.label()">
+      @if (theme.isDark()) {
+        <app-icon name="sun" [size]="19" />
+      } @else {
+        <app-icon name="moon" [size]="19" />
       }
     </button>
     <a class="btn btn--ghost btn--sm" routerLink="/login">Sign in</a>

@@ -1,0 +1,96 @@
+@if (open()) {
+  <section class="chat" role="dialog" aria-modal="false" aria-labelledby="chat-title">
+    <header class="chat__head">
+      <span class="chat__avatar" aria-hidden="true"><app-icon name="sparkle" [size]="18" /></span>
+      <div class="chat__title">
+        <h2 id="chat-title">Career assistant</h2>
+        <p>Jobs, CVs, interviews &amp; career moves</p>
+      </div>
+      @if (messages().length) {
+        <button type="button" class="chat__icon" (click)="clear()" aria-label="Delete conversation" title="Delete conversation">
+          <app-icon name="trash" [size]="16" />
+        </button>
+      }
+      <button type="button" class="chat__icon" (click)="close()" aria-label="Close assistant">
+        <app-icon name="close" [size]="18" />
+      </button>
+    </header>
+
+    @if (status(); as current) {
+      @if (!current.enabled) {
+        <p class="chat__notice chat__notice--off">{{ current.reason || 'The assistant is not available right now.' }}</p>
+      } @else if (!current.personalised) {
+        <p class="chat__notice">
+          General advice only. For answers based on your CV and applications,
+          <a routerLink="/settings" (click)="close()">enable personalised AI</a>.
+        </p>
+      }
+    }
+
+    <div class="chat__body" #scroller aria-live="polite">
+      @if (!messages().length) {
+        <div class="chat__welcome">
+          <p><strong>Hi! 👋</strong> Ask me anything about your job search: which jobs fit you, how to improve your CV, what to say in an interview…</p>
+          <div class="chat__suggestions">
+            @for (question of suggestions; track question) {
+              <button type="button" [disabled]="!status()?.enabled || sending()" (click)="ask(question)">{{ question }}</button>
+            }
+          </div>
+        </div>
+      }
+      @for (message of messages(); track message.id) {
+        <div class="msg msg--{{ message.role }}">
+          @if (message.role === 'assistant') {
+            <div class="msg__bubble" [innerHTML]="render(message.content)"></div>
+          } @else {
+            <div class="msg__bubble">{{ message.content }}</div>
+          }
+        </div>
+      }
+      @if (sending()) {
+        <div class="msg msg--assistant">
+          <div class="msg__bubble msg__typing" aria-label="The assistant is thinking"><span></span><span></span><span></span></div>
+        </div>
+      }
+    </div>
+
+    @if (error()) {
+      <p class="chat__error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="chat__composer" (submit)="$event.preventDefault(); send()">
+      <label class="sr-only" for="chat-input">Your message</label>
+      <textarea
+        #input
+        id="chat-input"
+        rows="1"
+        maxlength="2000"
+        placeholder="Ask about jobs, your CV, interviews…"
+        [value]="draft()"
+        [disabled]="!status()?.enabled"
+        (input)="setDraft($event)"
+        (keydown)="onKeydown($event)"
+      ></textarea>
+      <button type="submit" class="chat__send" [disabled]="!canSend()" aria-label="Send message">
+        <app-icon name="arrow-right" [size]="18" />
+      </button>
+    </form>
+    <p class="chat__foot">Answers by {{ status()?.provider || 'AI' }} can be wrong. Check important details.</p>
+  </section>
+}
+
+<button
+  type="button"
+  class="chat-fab"
+  [class.is-open]="open()"
+  (click)="toggle()"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="open() ? 'Close career assistant' : 'Open career assistant'"
+>
+  @if (open()) {
+    <app-icon name="close" [size]="22" />
+  } @else {
+    <app-icon name="sparkle" [size]="22" />
+    <span class="chat-fab__label">Ask AI</span>
+  }
+</button>

@@ -32,6 +32,21 @@ FIRST_PERSON_START = re.compile(r"^(?:I\s+|I've\s+|I'm\s+|My\s+|Je\s+|J'ai\s+|J�
 PLACEHOLDER = re.compile(r"\[[^\]]{1,40}\]")
 FIGURE = re.compile(r"\d+(?:[.,]\d+)?")
 MAX_BULLETS_FOR_AI = 40
+# Vague openings recruiters skip: they describe duties, not what was achieved.
+WEAK_OPENING = re.compile(
+    r"^(?:responsible\s+for|in\s+charge\s+of|duties\s+(?:included|include)|tasked\s+with|"
+    r"helped(?:\s+(?:with|to))?|assisted(?:\s+(?:with|in))?|worked\s+on|involved\s+in|participated\s+in|"
+    r"charg[ée]e?\s+de|responsable\s+de|participation\s+[àa]|particip[ée]e?\s+[àa]|aid[ée]e?\s+[àa]|"
+    r"travaill[ée]e?\s+sur|missions?\s*:)",
+    re.IGNORECASE,
+)
+# Clichés that ATS ignore and recruiters distrust without evidence.
+BUZZWORDS = re.compile(
+    r"\b(?:hard[- ]working|team\s+player|results?[- ]driven|results?[- ]oriented|detail[- ]oriented|self[- ]starter|"
+    r"go[- ]getter|highly\s+motivated|motivated|passionate|dynamic|synergy|think\s+outside\s+the\s+box|"
+    r"dynamique|motiv[ée]e?|passionn[ée]e?|esprit\s+d['’]\s*[ée]quipe|rigoureu(?:x|se)|polyvalente?)(?!\w)",
+    re.IGNORECASE,
+)
 
 TEXT = {
     "en": {
@@ -41,6 +56,9 @@ TEXT = {
         "verb": "Start with an action verb (Led, Built, Reduced, Managed…).",
         "figure": "Add a figure if you can: %, amount, volume, team size or time saved.",
         "long": "Keep bullet points to one or two lines; split or shorten this one.",
+        "weak": "Replace “{phrase}” with an action verb that says what you did, then the result (action + task + result).",
+        "buzzwords": "Recruiters skip clichés like {items}. Show it with a fact instead: a result, a tool, a figure.",
+        "repeated_verb": "Vary your action verbs: “{verb}” already starts another point in this role.",
         "few_bullets": "Add 3–5 bullet points describing what you achieved in this role.",
         "no_dates": "Add start and end dates (month and year) to this role.",
         "skills_from_cv": "These skills appear in your experience but not in your skills list.",
@@ -60,6 +78,9 @@ TEXT = {
         "verb": "Commencez par un verbe d'action (Piloté, Développé, Réduit, Géré…).",
         "figure": "Ajoutez un chiffre si possible : %, montant, volume, taille d'équipe ou temps gagné.",
         "long": "Limitez chaque point à une ou deux lignes ; coupez ou raccourcissez celui-ci.",
+        "weak": "Remplacez « {phrase} » par un verbe d'action qui dit ce que vous avez fait, puis le résultat (action + tâche + résultat).",
+        "buzzwords": "Les recruteurs ignorent les clichés comme {items}. Prouvez-le plutôt par un fait : un résultat, un outil, un chiffre.",
+        "repeated_verb": "Variez vos verbes d'action : « {verb} » commence déjà un autre point de ce poste.",
         "few_bullets": "Ajoutez 3 à 5 points décrivant vos réalisations dans ce poste.",
         "no_dates": "Ajoutez les dates de début et de fin (mois et année) de ce poste.",
         "skills_from_cv": "Ces compétences apparaissent dans votre expérience mais pas dans votre liste de compétences.",
@@ -92,6 +113,11 @@ def _starts_with_verb(text: str) -> bool:
 def _scrub_contact(text: str) -> str:
     text = EMAIL_PATTERN.sub("[email]", text)
     return PHONE_PATTERN.sub(lambda m: "[phone]" if len(re.sub(r"\D", "", m.group(0))) >= 8 else m.group(0), text)
+
+
+def _buzzwords(text: str) -> str:
+    found = list(dict.fromkeys(match.group(0).lower() for match in BUZZWORDS.finditer(text)))
+    return ", ".join(f"“{word}”" for word in found[:3])
 
 
 def _year(value: str | None) -> int | None:
@@ -154,6 +180,8 @@ class SuggestionService:
                 out.append(CvSuggestion(field="summary", suggestion=self._summary_draft(doc, language), reason=t["add_summary"]))
             elif len(doc.summary.split()) < 12:
                 out.append(CvSuggestion(field="tip", original=doc.summary, reason=t["summary_short"]))
+            if doc.summary and (found := _buzzwords(doc.summary)):
+                out.append(CvSuggestion(field="tip", original=doc.summary, reason=t["buzzwords"].format(items=found)))
 
         if scope in ("all", "experience"):
             for entry in doc.experience:
@@ -163,8 +191,23 @@ class SuggestionService:
                     out.append(CvSuggestion(field="tip", target_id=entry.id, reason=t["few_bullets"]))
                 if not entry.start:
                     out.append(CvSuggestion(field="tip", target_id=entry.id, reason=t["no_dates"]))
+                openings: set[str] = set()
                 for index, bullet in enumerate(entry.bullets):
                     out.extend(self._bullet_rules(entry.id, index, bullet, t))
+                    first = WORD_PATTERN.findall(bullet)[:1]
+                    verb = strip_accents(first[0]).casefold() if first else ""
+                    if verb and _starts_with_verb(bullet):
+                        if verb in openings:
+                            out.append(
+                                CvSuggestion(
+                                    field="tip",
+                                    target_id=entry.id,
+                                    index=index,
+                                    original=bullet,
+                                    reason=t["repeated_verb"].format(verb=first[0]),
+                                )
+                            )
+                        openings.add(verb)
 
         if scope in ("all", "skills"):
             listed = self._skill_keys(doc.skills)
@@ -203,12 +246,17 @@ class SuggestionService:
                 out.append(CvSuggestion(field="bullet", target_id=target_id, index=index, original=bullet, suggestion=cleaned, reason=t["first_person"]))
                 return out
         tips = []
-        if not _starts_with_verb(bullet):
+        weak = WEAK_OPENING.match(bullet.strip())
+        if weak:
+            tips.append(t["weak"].format(phrase=weak.group(0).strip().rstrip(":")))
+        elif not _starts_with_verb(bullet):
             tips.append(t["verb"])
         if not NUMBER_PATTERN.search(bullet):
             tips.append(t["figure"])
         if len(bullet.split()) > 35:
             tips.append(t["long"])
+        if found := _buzzwords(bullet):
+            tips.append(t["buzzwords"].format(items=found))
         if tips:
             out.append(CvSuggestion(field="tip", target_id=target_id, index=index, original=bullet, reason=" ".join(tips)[:400]))
         return out

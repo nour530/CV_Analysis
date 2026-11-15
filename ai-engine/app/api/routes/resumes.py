@@ -28,6 +28,7 @@ from app.schemas.cv_document import (
 )
 from app.services.ats import AtsChecker
 from app.services.cv_builder.parser import document_language, parse_cv_text
+from app.services.cv_builder.pdf import render_pdf
 from app.services.cv_builder.render import export_filename, render_docx, render_text
 from app.services.cv_builder.suggestions import SuggestionService, merge_with_rules
 from app.services.documents.layout import LayoutSignals
@@ -239,6 +240,23 @@ def export_resume_docx(
     return Response(
         content=payload,
         media_type=DOCX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{resume_id}/export.pdf", summary="Download the CV as an ATS-friendly PDF")
+def export_resume_pdf(
+    resume_id: str = Path(max_length=36),
+    context: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+) -> Response:
+    record = _load(db, context.user.id, resume_id)
+    content = CvDocument.model_validate(record.content_json)
+    payload = render_pdf(content, language=record.language, template=record.template)
+    filename = export_filename(content, record.title, "pdf")
+    return Response(
+        content=payload,
+        media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

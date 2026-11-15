@@ -13,6 +13,7 @@ import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 import { ApplicationsStore } from './core/applications.store';
 import { WorkspaceStore } from './core/workspace.store';
+import { AssistantChatComponent } from './shared/components/assistant-chat/assistant-chat';
 import { IconComponent, IconName } from './shared/components/icon/icon';
 
 interface NavItem {
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
     RouterLink,
     RouterLinkActive,
     IconComponent,
+    AssistantChatComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',

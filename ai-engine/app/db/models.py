@@ -80,6 +80,9 @@ class UserSettings(Base):
     candidate_pool_size: Mapped[int] = mapped_column(Integer, nullable=False, default=40)
     preferred_category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     allow_remote_analysis: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Career goal used to personalise suggestions and the career assistant.
+    target_domain: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    target_role: Mapped[str | None] = mapped_column(String(160), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -335,3 +338,21 @@ class JobApplication(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, onupdate=utcnow
     )
+
+
+class ChatMessage(Base):
+    """One message in a user's conversation with the career assistant."""
+
+    __tablename__ = "chat_messages"
+    __table_args__ = (Index("ix_chat_messages_user_created", "user_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)

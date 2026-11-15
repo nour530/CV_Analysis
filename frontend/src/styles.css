@@ -884,50 +884,6 @@ svg {
   border: 0;
 }
 
-/* CV builder "PDF" export: print only the CV preview as a text-based PDF. */
-@media print {
-  @page {
-    size: A4;
-    margin: 0;
-  }
-
-  body.print-cv {
-    background: #fff !important;
-  }
-
-  body.print-cv * {
-    visibility: hidden;
-  }
-
-  body.print-cv .cv-page,
-  body.print-cv .cv-page * {
-    visibility: visible;
-  }
-
-  body.print-cv .cv-page {
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 210mm;
-    min-height: 297mm;
-    aspect-ratio: auto !important;
-    overflow: visible !important;
-    padding: 16mm 17mm !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    font-size: 10pt !important;
-  }
-
-  body.print-cv .cv-page--compact {
-    font-size: 9pt !important;
-  }
-
-  body.print-cv .cv-entry {
-    break-inside: avoid;
-  }
-}
-
-
 /* ==========================================================================
    Consumer refresh: larger type, pill buttons, softer cards, quieter labels.
    ========================================================================== */
@@ -1044,4 +1000,15 @@ body {
 
 .card__header {
   margin-bottom: 1.1rem;
+}
+
+/* Phones: a card header's actions move under the title instead of squeezing it. */
+@media (max-width: 640px) {
+  .card__header {
+    flex-wrap: wrap;
+  }
+
+  .card__header > div:first-child {
+    flex: 1 1 100%;
+  }
 }

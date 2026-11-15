@@ -13,6 +13,7 @@ from app.api.settings import APISettings
 from app.main import app
 from app.schemas.cv_document import CvDocument, CvExperience
 from app.services.cv_builder.parser import parse_cv_text
+from app.services.cv_builder.pdf import render_pdf, text_width, wrap
 from app.services.cv_builder.render import render_docx, render_text
 from app.services.cv_builder.suggestions import SuggestionService
 from app.services.documents.extraction import DocumentExtractionService
@@ -87,6 +88,36 @@ def test_docx_export_is_ats_safe_and_round_trips() -> None:
     assert "EXPÉRIENCE PROFESSIONNELLE" in french and "Aujourd'hui" in french
 
 
+
+def test_pdf_export_is_text_based_and_round_trips() -> None:
+    doc = parse_cv_text(STRONG_CV)
+    payload = render_pdf(doc, language="en", template="classic")
+    assert payload.startswith(b"%PDF-1.4") and payload.rstrip().endswith(b"%%EOF")
+    extracted = DocumentExtractionService().extract(payload, filename="cv.pdf", content_type=None, max_chars=100_000)
+    assert extracted.layout.image_count == 0
+    assert "PROFESSIONAL EXPERIENCE" in extracted.text
+    assert doc.contact.full_name in extracted.text
+    for bullet in doc.experience[0].bullets:
+        assert " ".join(bullet.split()[:4]) in " ".join(extracted.text.split())
+
+    french = parse_cv_text(FRENCH_CV)
+    text = DocumentExtractionService().extract(
+        render_pdf(french, language="fr", template="modern"), filename="cv.pdf", content_type=None, max_chars=100_000
+    ).text
+    assert "EXPÉRIENCE PROFESSIONNELLE" in text and "Français" in text
+
+
+def test_pdf_export_breaks_long_cvs_into_pages() -> None:
+    from pypdf import PdfReader
+
+    doc = parse_cv_text(STRONG_CV)
+    doc.experience = doc.experience * 12
+    reader = PdfReader(io.BytesIO(render_pdf(doc, template="compact")))
+    assert len(reader.pages) >= 2
+    assert "PROFESSIONAL EXPERIENCE" in reader.pages[0].extract_text()
+    assert wrap("word " * 50, 10, 200) and all(text_width(line, 10) <= 200 for line in wrap("x" * 300, 10, 200))
+
+
 # -- suggestions -----------------------------------------------------------------------
 
 
@@ -110,6 +141,41 @@ def test_rule_suggestions_are_factual() -> None:
     tip = next(item for item in by_field["tip"] if item.index == 1)
     assert "action verb" in tip.reason and "figure" in tip.reason
     assert set(by_field["skills"][0].add_skills) >= {"Python", "SQL", "Tableau"}
+
+
+def test_rules_flag_weak_openings_cliches_and_repeated_verbs() -> None:
+    doc = CvDocument(
+        summary="Hard-working and passionate team player with 5 years in B2B sales across Tunisia.",
+        experience=[
+            CvExperience(
+                title="Sales Representative", company="X", start="Jan 2020", current=True,
+                bullets=["Responsible for key accounts", "Managed 40 accounts worth 2M TND", "Managed a team of 3 agents",
+                         "Chargé de la prospection"],
+            ),
+        ],
+    )
+    tips = [item for item in SuggestionService().rules(doc, language="en") if item.field == "tip"]
+    by_index = {item.index: item.reason for item in tips if item.index is not None}
+    assert "“Responsible for”" in by_index[0] and "action verb" in by_index[0]
+    assert "“Chargé de”" in by_index[3]
+    assert any("Vary your action verbs" in item.reason and item.index == 2 for item in tips)
+    summary_tip = next(item for item in tips if item.index is None and "clichés" in item.reason)
+    assert "“hard-working”" in summary_tip.reason and "“team player”" in summary_tip.reason
+
+    french = SuggestionService().rules(
+        CvDocument(summary="Commercial dynamique et motivé, 5 ans d'expérience en vente B2B à Tunis et Sfax."), language="fr"
+    )
+    assert any("clichés" in item.reason and "« " not in item.reason and "“dynamique”" in item.reason for item in french)
+
+
+def test_ai_prompt_asks_for_the_recruiter_ats_standard() -> None:
+    from app.services.llm.prompt_templates import CV_IMPROVEMENT_VERSION, cv_improvement_prompt
+
+    prompt = cv_improvement_prompt("[exp:a:0] Made dashboards", language="en")
+    for rule in ("action + task + result", "Never make up the figure", "Responsible for", "same verb",
+                 "clichés", "acronym", "No objective statement", "exact wording"):
+        assert rule in prompt.user or rule in prompt.system, rule
+    assert CV_IMPROVEMENT_VERSION == "1.1.0"
 
 
 def test_ai_suggestions_are_validated() -> None:
@@ -186,6 +252,9 @@ def test_create_edit_export_and_delete_resume(client) -> None:
     listing = client.get("/api/v1/resumes").json()["items"]
     assert [item["id"] for item in listing] == [resume["id"]]
 
+    pdf = client.get(f"/api/v1/resumes/{resume['id']}/export.pdf")
+    assert pdf.status_code == 200 and pdf.headers["content-type"] == "application/pdf"
+    assert pdf.headers["content-disposition"] == 'attachment; filename="Amira_Ben_Salah_CV.pdf"'
     export = client.get(f"/api/v1/resumes/{resume['id']}/export.docx")
     assert export.status_code == 200
     assert export.headers["content-disposition"] == 'attachment; filename="Amira_Ben_Salah_CV.docx"'

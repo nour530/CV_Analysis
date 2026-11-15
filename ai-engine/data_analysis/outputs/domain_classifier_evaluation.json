@@ -1,0 +1,834 @@
+{
+  "generated_at": "2026-11-15T20:32:01.327303+00:00",
+  "esco_cross_validation": {
+    "documents": 5876,
+    "accuracy": 0.8336,
+    "macro_f1": 0.8209,
+    "per_field_f1": {
+      "agriculture": 0.798,
+      "business": 0.836,
+      "creative": 0.831,
+      "education": 0.921,
+      "engineering": 0.857,
+      "finance": 0.816,
+      "health": 0.837,
+      "hospitality": 0.778,
+      "it": 0.823,
+      "legal_social": 0.826,
+      "logistics": 0.646,
+      "manufacturing": 0.845,
+      "sales": 0.838,
+      "trades": 0.841
+    }
+  },
+  "real_cvs_esco_only": {
+    "cvs": 2001,
+    "accuracy": 0.3383,
+    "top3_accuracy": 0.7126,
+    "macro_f1": 0.2931,
+    "per_category": {
+      "ACCOUNTANT": {
+        "field": "finance",
+        "cvs": 118,
+        "accuracy": 0.61,
+        "common_confusions": [
+          [
+            "business",
+            39
+          ],
+          [
+            "sales",
+            6
+          ]
+        ]
+      },
+      "ADVOCATE": {
+        "field": "legal_social",
+        "cvs": 118,
+        "accuracy": 0.195,
+        "common_confusions": [
+          [
+            "business",
+            63
+          ],
+          [
+            "sales",
+            18
+          ]
+        ]
+      },
+      "AGRICULTURE": {
+        "field": "agriculture",
+        "cvs": 63,
+        "accuracy": 0.016,
+        "common_confusions": [
+          [
+            "business",
+            36
+          ],
+          [
+            "engineering",
+            12
+          ]
+        ]
+      },
+      "ARTS": {
+        "field": "creative",
+        "cvs": 103,
+        "accuracy": 0.039,
+        "common_confusions": [
+          [
+            "business",
+            39
+          ],
+          [
+            "education",
+            27
+          ]
+        ]
+      },
+      "BANKING": {
+        "field": "finance",
+        "cvs": 115,
+        "accuracy": 0.174,
+        "common_confusions": [
+          [
+            "business",
+            70
+          ],
+          [
+            "sales",
+            14
+          ]
+        ]
+      },
+      "BPO": {
+        "field": "sales",
+        "cvs": 22,
+        "accuracy": 0.0,
+        "common_confusions": [
+          [
+            "business",
+            17
+          ],
+          [
+            "it",
+            3
+          ]
+        ]
+      },
+      "BUSINESS-DEVELOPMENT": {
+        "field": "sales",
+        "cvs": 119,
+        "accuracy": 0.252,
+        "common_confusions": [
+          [
+            "business",
+            85
+          ],
+          [
+            "finance",
+            2
+          ]
+        ]
+      },
+      "CHEF": {
+        "field": "hospitality",
+        "cvs": 118,
+        "accuracy": 0.636,
+        "common_confusions": [
+          [
+            "business",
+            28
+          ],
+          [
+            "sales",
+            10
+          ]
+        ]
+      },
+      "CONSTRUCTION": {
+        "field": "trades",
+        "cvs": 112,
+        "accuracy": 0.062,
+        "common_confusions": [
+          [
+            "business",
+            68
+          ],
+          [
+            "engineering",
+            19
+          ]
+        ]
+      },
+      "DESIGNER": {
+        "field": "creative",
+        "cvs": 107,
+        "accuracy": 0.29,
+        "common_confusions": [
+          [
+            "engineering",
+            26
+          ],
+          [
+            "business",
+            19
+          ]
+        ]
+      },
+      "DIGITAL-MEDIA": {
+        "field": "creative",
+        "cvs": 96,
+        "accuracy": 0.073,
+        "common_confusions": [
+          [
+            "business",
+            46
+          ],
+          [
+            "sales",
+            36
+          ]
+        ]
+      },
+      "ENGINEERING": {
+        "field": "engineering",
+        "cvs": 118,
+        "accuracy": 0.593,
+        "common_confusions": [
+          [
+            "business",
+            30
+          ],
+          [
+            "it",
+            13
+          ]
+        ]
+      },
+      "FINANCE": {
+        "field": "finance",
+        "cvs": 118,
+        "accuracy": 0.229,
+        "common_confusions": [
+          [
+            "business",
+            85
+          ],
+          [
+            "sales",
+            5
+          ]
+        ]
+      },
+      "HEALTHCARE": {
+        "field": "health",
+        "cvs": 115,
+        "accuracy": 0.183,
+        "common_confusions": [
+          [
+            "business",
+            69
+          ],
+          [
+            "sales",
+            12
+          ]
+        ]
+      },
+      "HR": {
+        "field": "business",
+        "cvs": 110,
+        "accuracy": 0.955,
+        "common_confusions": [
+          [
+            "sales",
+            2
+          ],
+          [
+            "legal_social",
+            1
+          ]
+        ]
+      },
+      "INFORMATION-TECHNOLOGY": {
+        "field": "it",
+        "cvs": 120,
+        "accuracy": 0.433,
+        "common_confusions": [
+          [
+            "business",
+            57
+          ],
+          [
+            "legal_social",
+            4
+          ]
+        ]
+      },
+      "PUBLIC-RELATIONS": {
+        "field": "sales",
+        "cvs": 111,
+        "accuracy": 0.216,
+        "common_confusions": [
+          [
+            "business",
+            82
+          ],
+          [
+            "hospitality",
+            2
+          ]
+        ]
+      },
+      "SALES": {
+        "field": "sales",
+        "cvs": 116,
+        "accuracy": 0.543,
+        "common_confusions": [
+          [
+            "business",
+            35
+          ],
+          [
+            "hospitality",
+            12
+          ]
+        ]
+      },
+      "TEACHER": {
+        "field": "education",
+        "cvs": 102,
+        "accuracy": 0.441,
+        "common_confusions": [
+          [
+            "business",
+            29
+          ],
+          [
+            "health",
+            12
+          ]
+        ]
+      }
+    }
+  },
+  "real_cvs_full_model": {
+    "cvs": 2001,
+    "accuracy": 0.7156,
+    "top3_accuracy": 0.9225,
+    "macro_f1": 0.7049,
+    "per_category": {
+      "ACCOUNTANT": {
+        "field": "finance",
+        "cvs": 118,
+        "accuracy": 0.949,
+        "common_confusions": [
+          [
+            "sales",
+            3
+          ],
+          [
+            "creative",
+            1
+          ]
+        ]
+      },
+      "ADVOCATE": {
+        "field": "legal_social",
+        "cvs": 118,
+        "accuracy": 0.508,
+        "common_confusions": [
+          [
+            "health",
+            20
+          ],
+          [
+            "sales",
+            15
+          ]
+        ]
+      },
+      "AGRICULTURE": {
+        "field": "agriculture",
+        "cvs": 63,
+        "accuracy": 0.429,
+        "common_confusions": [
+          [
+            "creative",
+            6
+          ],
+          [
+            "finance",
+            6
+          ]
+        ]
+      },
+      "ARTS": {
+        "field": "creative",
+        "cvs": 103,
+        "accuracy": 0.379,
+        "common_confusions": [
+          [
+            "education",
+            21
+          ],
+          [
+            "sales",
+            18
+          ]
+        ]
+      },
+      "BANKING": {
+        "field": "finance",
+        "cvs": 115,
+        "accuracy": 0.73,
+        "common_confusions": [
+          [
+            "sales",
+            11
+          ],
+          [
+            "it",
+            8
+          ]
+        ]
+      },
+      "BPO": {
+        "field": "sales",
+        "cvs": 22,
+        "accuracy": 0.227,
+        "common_confusions": [
+          [
+            "finance",
+            7
+          ],
+          [
+            "it",
+            5
+          ]
+        ]
+      },
+      "BUSINESS-DEVELOPMENT": {
+        "field": "sales",
+        "cvs": 119,
+        "accuracy": 0.782,
+        "common_confusions": [
+          [
+            "finance",
+            16
+          ],
+          [
+            "business",
+            3
+          ]
+        ]
+      },
+      "CHEF": {
+        "field": "hospitality",
+        "cvs": 118,
+        "accuracy": 0.805,
+        "common_confusions": [
+          [
+            "sales",
+            12
+          ],
+          [
+            "creative",
+            4
+          ]
+        ]
+      },
+      "CONSTRUCTION": {
+        "field": "trades",
+        "cvs": 112,
+        "accuracy": 0.679,
+        "common_confusions": [
+          [
+            "creative",
+            9
+          ],
+          [
+            "finance",
+            9
+          ]
+        ]
+      },
+      "DESIGNER": {
+        "field": "creative",
+        "cvs": 107,
+        "accuracy": 0.757,
+        "common_confusions": [
+          [
+            "sales",
+            8
+          ],
+          [
+            "engineering",
+            7
+          ]
+        ]
+      },
+      "DIGITAL-MEDIA": {
+        "field": "creative",
+        "cvs": 96,
+        "accuracy": 0.635,
+        "common_confusions": [
+          [
+            "sales",
+            24
+          ],
+          [
+            "it",
+            6
+          ]
+        ]
+      },
+      "ENGINEERING": {
+        "field": "engineering",
+        "cvs": 118,
+        "accuracy": 0.695,
+        "common_confusions": [
+          [
+            "it",
+            12
+          ],
+          [
+            "creative",
+            8
+          ]
+        ]
+      },
+      "FINANCE": {
+        "field": "finance",
+        "cvs": 118,
+        "accuracy": 0.881,
+        "common_confusions": [
+          [
+            "sales",
+            9
+          ],
+          [
+            "creative",
+            2
+          ]
+        ]
+      },
+      "HEALTHCARE": {
+        "field": "health",
+        "cvs": 115,
+        "accuracy": 0.609,
+        "common_confusions": [
+          [
+            "sales",
+            16
+          ],
+          [
+            "legal_social",
+            7
+          ]
+        ]
+      },
+      "HR": {
+        "field": "business",
+        "cvs": 110,
+        "accuracy": 0.809,
+        "common_confusions": [
+          [
+            "sales",
+            8
+          ],
+          [
+            "finance",
+            4
+          ]
+        ]
+      },
+      "INFORMATION-TECHNOLOGY": {
+        "field": "it",
+        "cvs": 120,
+        "accuracy": 0.85,
+        "common_confusions": [
+          [
+            "creative",
+            7
+          ],
+          [
+            "finance",
+            3
+          ]
+        ]
+      },
+      "PUBLIC-RELATIONS": {
+        "field": "sales",
+        "cvs": 111,
+        "accuracy": 0.748,
+        "common_confusions": [
+          [
+            "creative",
+            17
+          ],
+          [
+            "finance",
+            5
+          ]
+        ]
+      },
+      "SALES": {
+        "field": "sales",
+        "cvs": 116,
+        "accuracy": 0.784,
+        "common_confusions": [
+          [
+            "creative",
+            8
+          ],
+          [
+            "trades",
+            4
+          ]
+        ]
+      },
+      "TEACHER": {
+        "field": "education",
+        "cvs": 102,
+        "accuracy": 0.765,
+        "common_confusions": [
+          [
+            "creative",
+            11
+          ],
+          [
+            "sales",
+            5
+          ]
+        ]
+      }
+    }
+  },
+  "spot_checks": [
+    {
+      "expected": "it",
+      "text": "D\u00e9veloppeur full-stack, 4 ans d'exp\u00e9rience. D\u00e9veloppement d'API REST avec Python et FastAPI, interfaces Angular et TypeScript, Docker, GitLab CI, PostgreSQL. Dipl\u00f4me d'ing\u00e9nieur en informatique.",
+      "top3": [
+        [
+          "it",
+          0.4857
+        ],
+        [
+          "engineering",
+          0.1182
+        ],
+        [
+          "legal_social",
+          0.067
+        ]
+      ]
+    },
+    {
+      "expected": "it",
+      "text": "Software engineer: built React and Node.js web apps, AWS deployments, Kubernetes, CI/CD pipelines, unit testing, SQL databases. BSc Computer Science.",
+      "top3": [
+        [
+          "it",
+          0.482
+        ],
+        [
+          "engineering",
+          0.145
+        ],
+        [
+          "trades",
+          0.0843
+        ]
+      ]
+    },
+    {
+      "expected": "health",
+      "text": "Infirmi\u00e8re dipl\u00f4m\u00e9e d'\u00c9tat, 6 ans en service de chirurgie : soins aux patients, pr\u00e9paration et administration des traitements, hygi\u00e8ne hospitali\u00e8re, suivi des dossiers de soins.",
+      "top3": [
+        [
+          "health",
+          0.5469
+        ],
+        [
+          "hospitality",
+          0.1679
+        ],
+        [
+          "sales",
+          0.0588
+        ]
+      ]
+    },
+    {
+      "expected": "finance",
+      "text": "Comptable : tenue de la comptabilit\u00e9 g\u00e9n\u00e9rale, bilans, d\u00e9clarations fiscales, rapprochements bancaires, paie, logiciel Sage.",
+      "top3": [
+        [
+          "finance",
+          0.5004
+        ],
+        [
+          "legal_social",
+          0.0998
+        ],
+        [
+          "manufacturing",
+          0.0819
+        ]
+      ]
+    },
+    {
+      "expected": "hospitality",
+      "text": "Chef de cuisine : gestion de brigade, \u00e9laboration des menus, normes HACCP, p\u00e2tisserie, gestion des commandes et des stocks alimentaires.",
+      "top3": [
+        [
+          "hospitality",
+          0.6796
+        ],
+        [
+          "trades",
+          0.0721
+        ],
+        [
+          "business",
+          0.0538
+        ]
+      ]
+    },
+    {
+      "expected": "sales",
+      "text": "Commercial terrain : prospection de nouveaux clients, n\u00e9gociation, suivi du portefeuille, atteinte des objectifs de vente, CRM.",
+      "top3": [
+        [
+          "sales",
+          0.5828
+        ],
+        [
+          "trades",
+          0.0826
+        ],
+        [
+          "business",
+          0.0749
+        ]
+      ]
+    },
+    {
+      "expected": "logistics",
+      "text": "Responsable logistique : gestion d'entrep\u00f4t, r\u00e9ception et exp\u00e9dition des marchandises, planification du transport, gestion des stocks, chauffeurs, supply chain.",
+      "top3": [
+        [
+          "logistics",
+          0.6196
+        ],
+        [
+          "business",
+          0.2406
+        ],
+        [
+          "manufacturing",
+          0.047
+        ]
+      ]
+    },
+    {
+      "expected": "trades",
+      "text": "\u00c9lectricien b\u00e2timent : installation et c\u00e2blage \u00e9lectrique, tableaux \u00e9lectriques, lecture de plans, mise en conformit\u00e9, chantiers r\u00e9sidentiels.",
+      "top3": [
+        [
+          "trades",
+          0.4699
+        ],
+        [
+          "manufacturing",
+          0.2483
+        ],
+        [
+          "engineering",
+          0.0763
+        ]
+      ]
+    },
+    {
+      "expected": "manufacturing",
+      "text": "Op\u00e9rateur de production en usine textile : conduite de machines, contr\u00f4le qualit\u00e9 des pi\u00e8ces, r\u00e9glage, respect des cadences et des consignes de s\u00e9curit\u00e9.",
+      "top3": [
+        [
+          "manufacturing",
+          0.7371
+        ],
+        [
+          "trades",
+          0.1728
+        ],
+        [
+          "logistics",
+          0.0285
+        ]
+      ]
+    },
+    {
+      "expected": "education",
+      "text": "Enseignante de math\u00e9matiques au lyc\u00e9e : pr\u00e9paration des cours, \u00e9valuation des \u00e9l\u00e8ves, suivi p\u00e9dagogique, conseils de classe.",
+      "top3": [
+        [
+          "education",
+          0.6847
+        ],
+        [
+          "trades",
+          0.062
+        ],
+        [
+          "hospitality",
+          0.0489
+        ]
+      ]
+    },
+    {
+      "expected": "agriculture",
+      "text": "Technicien agricole : suivi des cultures d'oliviers et de c\u00e9r\u00e9ales, irrigation, traitements phytosanitaires, conduite de tracteur, r\u00e9colte.",
+      "top3": [
+        [
+          "agriculture",
+          0.516
+        ],
+        [
+          "trades",
+          0.1572
+        ],
+        [
+          "logistics",
+          0.0676
+        ]
+      ]
+    },
+    {
+      "expected": "engineering",
+      "text": "Ing\u00e9nieur g\u00e9nie civil : conception de structures en b\u00e9ton arm\u00e9, calculs, suivi de chantier, AutoCAD, Robot Structural Analysis.",
+      "top3": [
+        [
+          "engineering",
+          0.8854
+        ],
+        [
+          "manufacturing",
+          0.0206
+        ],
+        [
+          "trades",
+          0.0149
+        ]
+      ]
+    }
+  ],
+  "saved_model": {
+    "path": "data\\models\\domain_classifier.joblib",
+    "esco_occupations": 2938,
+    "cvs": 2001,
+    "it_job_ads": 420
+  }
+}

@@ -2,15 +2,18 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  HostListener,
   computed,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, defer, of, shareReplay, switchMap, tap } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiError, toApiError } from '../../core/api-error';
 import { AtsReport } from '../../core/api.models';
 import { JobMatchApiService } from '../../core/api.service';
+import { saveFile } from '../../core/save-file';
 import {
   CvDocument,
   CvEducation,
@@ -89,7 +92,8 @@ export class EditorPage {
   readonly atsReport = signal<AtsReport | null>(null);
   readonly atsLoading = signal(false);
   readonly jobId = signal<string | null>(null);
-  readonly downloading = signal(false);
+  readonly downloading = signal<'pdf' | 'docx' | null>(null);
+  readonly downloadMessage = signal('');
   readonly skillDraft = signal('');
 
   readonly headings = computed(() => HEADINGS[this.language()]);
@@ -390,9 +394,18 @@ export class EditorPage {
   // -- saving, checking, exporting ----------------------------------------------------
 
   save(): void {
+    this.saveRequest().subscribe({ error: () => undefined });
+  }
+
+  /** Completes once the CV on the server matches the editor. */
+  private pendingSave(): Observable<unknown> {
+    return this.saveState() === 'saved' ? of(null) : this.saveRequest();
+  }
+
+  private saveRequest(): Observable<ResumeResponse | null> {
     const record = this.record();
     if (!record) {
-      return;
+      return of(null);
     }
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
@@ -402,27 +415,31 @@ export class EditorPage {
     const content = structuredClone(this.doc());
     content.languages = content.languages.filter((item) => item.name.trim().length > 0);
     this.saveState.set('saving');
-    this.api
+    const request = this.api
       .updateResume(record.id, {
         title: this.title().trim() || 'My CV',
         template: this.template(),
         language: this.language(),
         content,
       })
-      .subscribe({
-        next: (saved) => {
-          this.record.set(saved);
-          this.atsScore.set(saved.ats_score);
-          if (this.saveState() === 'saving') {
-            this.saveState.set('saved');
-          }
-          this.saveError.set('');
-        },
-        error: (error: unknown) => {
-          this.saveState.set('error');
-          this.saveError.set(toApiError(error).message);
-        },
-      });
+      .pipe(
+        tap({
+          next: (saved) => {
+            this.record.set(saved);
+            this.atsScore.set(saved.ats_score);
+            if (this.saveState() === 'saving') {
+              this.saveState.set('saved');
+            }
+            this.saveError.set('');
+          },
+          error: (error: unknown) => {
+            this.saveState.set('error');
+            this.saveError.set(toApiError(error).message);
+          },
+        }),
+        shareReplay(1),
+      );
+    return request;
   }
 
   openAts(): void {
@@ -430,14 +447,13 @@ export class EditorPage {
     if (!record) {
       return;
     }
-    if (this.saveState() !== 'saved') {
-      this.save();
-    }
     this.panel.set('ats');
     this.atsLoading.set(true);
-    this.api
-      .checkResumeAts(record.id, this.jobId())
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    this.pendingSave()
+      .pipe(
+        switchMap(() => this.api.checkResumeAts(record.id, this.jobId())),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (report) => {
           this.atsReport.set(report);
@@ -447,39 +463,29 @@ export class EditorPage {
       });
   }
 
-  downloadDocx(): void {
+  /** Save the CV as an ATS-friendly PDF or Word file (built by the server
+   * from the saved CV, so unsaved edits are saved first). */
+  async download(kind: 'pdf' | 'docx'): Promise<void> {
     const record = this.record();
     if (!record || this.downloading()) {
       return;
     }
-    this.downloading.set(true);
-    this.api
-      .exportResumeDocx(record.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (blob) => {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          const name = (this.doc().contact.full_name || this.title() || 'CV').replace(/[^\p{L}\p{N}-]+/gu, '_');
-          link.href = url;
-          link.download = `${name}_CV.docx`;
-          link.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          this.downloading.set(false);
-        },
-        error: () => this.downloading.set(false),
-      });
-  }
-
-  /** Browser print produces a text-based PDF from the live preview. */
-  printPdf(): void {
-    document.body.classList.add('print-cv');
-    const cleanup = () => {
-      document.body.classList.remove('print-cv');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    window.print();
+    this.downloading.set(kind);
+    this.downloadMessage.set('');
+    const name = (this.doc().contact.full_name || this.title() || 'CV').replace(/[^\p{L}\p{N}-]+/gu, '_');
+    const source = defer(() => this.pendingSave()).pipe(
+      switchMap(() => (kind === 'pdf' ? this.api.exportResumePdf(record.id) : this.api.exportResumeDocx(record.id))),
+    );
+    try {
+      const result = await saveFile(source, `${name}_CV.${kind}`, kind);
+      if (result !== 'cancelled') {
+        this.downloadMessage.set(`${kind === 'pdf' ? 'PDF' : 'Word file'} ${result === 'saved' ? 'saved' : 'downloaded'}.`);
+      }
+    } catch (error) {
+      this.downloadMessage.set(toApiError(error).message || 'The download failed. Please try again.');
+    } finally {
+      this.downloading.set(null);
+    }
   }
 
   // -- suggestions ----------------------------------------------------------------------
@@ -593,6 +599,7 @@ export class EditorPage {
     );
   }
 
+  @HostListener('document:keydown.escape')
   closePanel(): void {
     this.panel.set('none');
   }

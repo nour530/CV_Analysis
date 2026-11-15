@@ -35,11 +35,18 @@
         <button type="button" class="btn btn--primary btn--sm" (click)="loadSuggestions()">
           <app-icon name="sparkle" [size]="15" /> Improve
         </button>
-        <button type="button" class="btn btn--secondary btn--sm" [disabled]="downloading()" (click)="downloadDocx()">
-          Word
+        <button type="button" class="btn btn--secondary btn--sm" [disabled]="downloading() !== null" (click)="download('pdf')"
+                title="Download an ATS-friendly PDF">
+          <app-icon name="download" [size]="15" /> {{ downloading() === 'pdf' ? 'Preparing…' : 'PDF' }}
         </button>
-        <button type="button" class="btn btn--secondary btn--sm" (click)="printPdf()">PDF</button>
+        <button type="button" class="btn btn--secondary btn--sm" [disabled]="downloading() !== null" (click)="download('docx')"
+                title="Download an ATS-friendly Word file">
+          <app-icon name="download" [size]="15" /> {{ downloading() === 'docx' ? 'Preparing…' : 'Word' }}
+        </button>
       </div>
+      @if (downloadMessage()) {
+        <p class="editor__download-note" role="status">{{ downloadMessage() }}</p>
+      }
     </header>
     @if (saveError()) {
       <div class="alert alert--error" role="alert">
@@ -322,10 +329,13 @@
 
   <!-- Side panel --------------------------------------------------------------- -->
   @if (panel() !== 'none') {
-    <aside class="ed-panel" [attr.aria-label]="panel() === 'ats' ? 'ATS check' : 'Suggestions'">
+    <div class="ed-backdrop" (click)="closePanel()" aria-hidden="true"></div>
+    <aside class="ed-panel" role="dialog" aria-modal="true" [attr.aria-label]="panel() === 'ats' ? 'ATS check' : 'Improve your CV'">
       <div class="ed-panel__head">
         <h2>{{ panel() === 'ats' ? 'ATS check' : 'Improve your CV' }}</h2>
-        <button type="button" class="btn btn--icon btn--ghost" (click)="closePanel()" aria-label="Close panel">✕</button>
+        <button type="button" class="ed-panel__close" (click)="closePanel()" aria-label="Close">
+          <app-icon name="close" [size]="18" /> <span>Close</span>
+        </button>
       </div>
 
       @if (panel() === 'ats') {

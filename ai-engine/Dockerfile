@@ -23,6 +23,8 @@ COPY data/features/skills_dictionary.csv ./data/features/skills_dictionary.csv
 COPY data/features/skill_aliases.csv ./data/features/skill_aliases.csv
 COPY data/features/skills_supplement.csv ./data/features/skills_supplement.csv
 COPY data/job_sources.json ./data/job_sources.json
+COPY data/esco ./data/esco
+COPY data/models ./data/models
 
 RUN mkdir -p /app/data \
     && chown -R jobmatch:jobmatch /app
