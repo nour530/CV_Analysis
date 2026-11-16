@@ -16,6 +16,14 @@ from app.core.user_quota import REMOTE_LLM, enforce_user_quota
 from app.db.models import CVAnalysis, CvDocumentRecord, utcnow
 from app.db.session import get_db
 from app.schemas.ats import AtsReport
+from app.schemas.cv_quality import (
+    CriterionScore,
+    CvEvaluationResponse,
+    CvRewriteRequest,
+    CvRewriteResponse,
+    FactCheckItem,
+    SectionChange,
+)
 from app.schemas.cv_document import (
     CvDocument,
     CvSuggestionRequest,
@@ -31,6 +39,9 @@ from app.services.cv_builder.parser import document_language, parse_cv_text
 from app.services.cv_builder.pdf import render_pdf
 from app.services.cv_builder.render import export_filename, render_docx, render_text
 from app.services.cv_builder.suggestions import SuggestionService, merge_with_rules
+from app.services.cv_quality.evaluation import evaluate
+from app.services.cv_quality.rewriter import CvRewriter, CvRewriteError, CvRewriteSettings
+from app.services.cv_quality.scorer import get_cv_scorer
 from app.services.documents.layout import LayoutSignals
 from app.services.llm.base import BaseLLMProvider
 from app.services.llm.exceptions import LLMError
@@ -48,6 +59,12 @@ AI_NOTICES = {
     "no_provider": "No AI provider is configured on this server, so these are rule-based tips.",
     "failed": "The AI service did not respond, so these are rule-based tips. Try again later.",
 }
+
+
+def get_cv_rewriter() -> CvRewriter | None:
+    """Claude CV rewriter, or None without an Anthropic API key. Overridable in tests."""
+    settings = CvRewriteSettings.from_env()
+    return CvRewriter(settings) if settings.has_credentials() else None
 
 
 def _load(db: Session, user_id: str, resume_id: str) -> CvDocumentRecord:
@@ -345,3 +362,77 @@ def suggest_improvements(
         job_id=request.job_id,
         job_title=job_title,
     )
+
+
+@router.post("/{resume_id}/evaluation", response_model=CvEvaluationResponse, summary="Score the CV with our trained CV quality model")
+def evaluate_resume(
+    resume_id: str = Path(max_length=36),
+    context: AuthContext = Depends(get_auth_context),
+    db: Session = Depends(get_db),
+) -> CvEvaluationResponse:
+    record = _load(db, context.user.id, resume_id)
+    content = CvDocument.model_validate(record.content_json)
+    result = evaluate(content, get_cv_scorer(), language=record.language)
+    return CvEvaluationResponse(
+        available=result.available,
+        overall=result.overall,
+        criteria=[CriterionScore(id=c.id, label=c.label, score=c.score, evidence=c.evidence) for c in result.criteria],
+        checks=[FactCheckItem(id=c.id, label=c.label, ok=c.ok) for c in result.checks],
+        model=result.model,
+        notice=None if result.available else "The CV scoring model has not been trained on this server yet; showing measured facts only.",
+    )
+
+
+@router.post("/{resume_id}/ai-rewrite", response_model=CvRewriteResponse, summary="Rebuild and rewrite the whole CV with AI (reviewed per section)")
+def rewrite_resume(
+    http_request: Request,
+    request: CvRewriteRequest | None = None,
+    resume_id: str = Path(max_length=36),
+    context: AuthContext = Depends(get_auth_context),
+    settings: APISettings = Depends(get_api_settings),
+    service: MatchingApplicationService = Depends(get_matching_application_service),
+    rewriter: CvRewriter | None = Depends(get_cv_rewriter),
+    db: Session = Depends(get_db),
+) -> CvRewriteResponse:
+    record = _load(db, context.user.id, resume_id)
+    if not settings.allow_remote_llm_analysis:
+        raise APIError(status_code=503, code="ai_disabled", message="AI rewriting is turned off on this server.")
+    if not get_or_create_user_settings(db, user_id=context.user.id).allow_remote_analysis:
+        raise APIError(status_code=403, code="ai_consent_required", message="AI rewriting needs your consent: turn on AI features in Settings.")
+    if rewriter is None:
+        raise APIError(status_code=503, code="ai_not_configured", message="No AI provider is configured on this server.")
+    content = CvDocument.model_validate(record.content_json)
+    if not render_text(content, record.language).strip():
+        raise APIError(status_code=422, code="resume_empty", message="Add some content to your CV first.")
+    job_title = job_skills = None
+    job_id = request.job_id if request else None
+    if job_id:
+        job = service.get_job(job_id)
+        job_title = job.title
+        job_skills = [req.skill for req in service.catalog.profile(job).requirements]
+    enforce_user_quota(
+        http_request,
+        user_id=context.user.id,
+        operation=REMOTE_LLM,
+        limit=settings.user_quota_remote_llm_attempts,
+        window_seconds=settings.user_quota_remote_llm_window_seconds,
+        settings=settings,
+    )
+    try:
+        result = rewriter.rewrite(content, language=record.language, job_title=job_title, job_skills=job_skills)
+    except CvRewriteError as exc:
+        raise APIError(status_code=502, code="ai_rewrite_failed", message=str(exc)) from exc
+    scorer = get_cv_scorer()
+    before = after = None
+    if scorer is not None:
+        before = scorer.score(render_text(content, record.language)).overall
+        after = scorer.score(render_text(result.improved, record.language)).overall
+    return CvRewriteResponse(
+        improved=result.improved,
+        sections=[SectionChange(id=s.id, changed=s.changed, note=s.note, warnings=s.warnings) for s in result.sections],
+        score_before=before,
+        score_after=after,
+        model=result.model,
+        job_title=job_title,
+    )
+

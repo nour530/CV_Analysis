@@ -184,3 +184,48 @@ export interface MatchScoresResponse {
   has_cv: boolean;
   scores: MatchScore[];
 }
+
+// -- CV evaluation (our trained model) and full AI rewrite (Claude) --------------------
+
+export interface CriterionScore {
+  id: string;
+  label: string;
+  /** 0-10; null until the scoring model is trained on the server. */
+  score: number | null;
+  evidence: string[];
+}
+
+export interface CvEvaluation {
+  available: boolean;
+  overall: number | null;
+  criteria: CriterionScore[];
+  checks: { id: string; label: string; ok: boolean }[];
+  model: { kind?: string; cvs?: number; trained_at?: string };
+  notice: string | null;
+}
+
+export type CvSectionId =
+  | 'contact'
+  | 'summary'
+  | 'experience'
+  | 'education'
+  | 'skills'
+  | 'languages'
+  | 'certifications'
+  | 'projects';
+
+export interface CvSectionChange {
+  id: CvSectionId;
+  changed: boolean;
+  note: string;
+  warnings: string[];
+}
+
+export interface CvRewriteResponse {
+  improved: CvDocument;
+  sections: CvSectionChange[];
+  score_before: number | null;
+  score_after: number | null;
+  model: string;
+  job_title: string | null;
+}

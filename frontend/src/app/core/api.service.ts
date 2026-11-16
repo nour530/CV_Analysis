@@ -19,6 +19,8 @@ import {
   ApplicationListResponse,
   ApplicationStatus,
   ApplicationUpdateRequest,
+  CvEvaluation,
+  CvRewriteResponse,
   CvSuggestionRequest,
   JobApplication,
   MatchScoresResponse,
@@ -318,6 +320,23 @@ export class JobMatchApiService {
         `${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/ats`,
         { job_id: jobId },
       ),
+    );
+  }
+
+  /** Scores from our own trained CV model (runs on the server, no AI provider). */
+  evaluateResume(id: string): Observable<CvEvaluation> {
+    return this.request(
+      this.http.post<CvEvaluation>(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/evaluation`, {}),
+    );
+  }
+
+  /** Full AI rebuild and rewrite of the CV (Claude); can take up to a few minutes. */
+  rewriteResume(id: string, jobId: string | null = null): Observable<CvRewriteResponse> {
+    return this.request(
+      this.http.post<CvRewriteResponse>(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/ai-rewrite`, {
+        job_id: jobId,
+      }),
+      240_000,
     );
   }
 

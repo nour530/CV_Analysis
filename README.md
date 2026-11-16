@@ -11,6 +11,10 @@ ATS CV checker, CV builder and job matching for job seekers in Tunisia.
 - **Real jobs:** current openings published by employers in Tunisia plus remote
   roles, synced every 6 hours, each with a match score for your CV
   (`ai-engine/docs/real-jobs.md`).
+- **AI review:** our own trained model scores the CV on 8 recruiter criteria,
+  and Claude rebuilds and rewrites the whole CV into a clean ATS structure,
+  reviewed section by section. Contact details are never sent; new facts are
+  flagged (`ai-engine/docs/cv-quality.md`).
 - **Application tracker:** save jobs and move them from Saved to Applied,
   Interview and Offer.
 - **Career fields beyond IT:** about 3,000 occupations and 13,500 skills from

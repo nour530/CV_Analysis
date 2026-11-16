@@ -32,9 +32,10 @@
         <button type="button" class="btn btn--secondary btn--sm" (click)="openAts()">
           ATS {{ atsScore() ?? '—' }}
         </button>
-        <button type="button" class="btn btn--primary btn--sm" (click)="loadSuggestions()">
-          <app-icon name="sparkle" [size]="15" /> Improve
+        <button type="button" class="btn btn--primary btn--sm" (click)="openReview()">
+          <app-icon name="sparkle" [size]="15" /> AI review
         </button>
+        <button type="button" class="btn btn--secondary btn--sm" (click)="loadSuggestions()">Tips</button>
         <button type="button" class="btn btn--secondary btn--sm" [disabled]="downloading() !== null" (click)="download('pdf')"
                 title="Download an ATS-friendly PDF">
           <app-icon name="download" [size]="15" /> {{ downloading() === 'pdf' ? 'Preparing…' : 'PDF' }}
@@ -330,15 +331,113 @@
   <!-- Side panel --------------------------------------------------------------- -->
   @if (panel() !== 'none') {
     <div class="ed-backdrop" (click)="closePanel()" aria-hidden="true"></div>
-    <aside class="ed-panel" role="dialog" aria-modal="true" [attr.aria-label]="panel() === 'ats' ? 'ATS check' : 'Improve your CV'">
+    <aside class="ed-panel" [class.ed-panel--wide]="panel() === 'review'" role="dialog" aria-modal="true" [attr.aria-label]="panelTitle()">
       <div class="ed-panel__head">
-        <h2>{{ panel() === 'ats' ? 'ATS check' : 'Improve your CV' }}</h2>
+        <h2>{{ panelTitle() }}</h2>
         <button type="button" class="ed-panel__close" (click)="closePanel()" aria-label="Close">
           <app-icon name="close" [size]="18" /> <span>Close</span>
         </button>
       </div>
 
-      @if (panel() === 'ats') {
+      @if (panel() === 'review') {
+        <!-- 1. Evaluation by our own trained model -->
+        <section class="rv-block" aria-label="CV evaluation">
+          @if (evaluationLoading()) {
+            <p class="muted">Evaluating your CV…</p>
+          } @else if (evaluation(); as ev) {
+            <div class="rv-score">
+              @if (ev.available && ev.overall !== null) {
+                <app-score-ring [score]="ev.overall" [tone]="scoreTone(ev.overall)" label="CV quality" />
+              }
+              <div>
+                <h3>{{ ev.available ? 'CV quality score' : 'What we measured' }}</h3>
+                <p class="muted small">
+                  @if (ev.available) {
+                    Scored by our CV model, trained on {{ ev.model.cvs }} CVs graded by recruiter criteria. It runs on our server: nothing is sent to an AI provider.
+                  } @else {
+                    {{ ev.notice }}
+                  }
+                </p>
+              </div>
+            </div>
+            <ul class="rv-criteria">
+              @for (c of ev.criteria; track c.id) {
+                <li>
+                  <div class="rv-criterion__head">
+                    <strong>{{ c.label }}</strong>
+                    @if (c.score !== null) { <span class="rv-criterion__value">{{ c.score }}/10</span> }
+                  </div>
+                  @if (c.score !== null) {
+                    <div class="rv-bar" aria-hidden="true"><span [style.width.%]="c.score * 10"></span></div>
+                  }
+                  @for (line of c.evidence; track $index) { <p class="rv-evidence">{{ line }}</p> }
+                </li>
+              }
+            </ul>
+            <ul class="rv-checks" aria-label="Fact checks">
+              @for (check of ev.checks; track check.id) {
+                <li [class.is-ok]="check.ok"><app-icon [name]="check.ok ? 'check' : 'alert'" [size]="14" /> {{ check.label }}</li>
+              }
+            </ul>
+          }
+        </section>
+
+        <!-- 2. Full rewrite by Claude, reviewed per section -->
+        <section class="rv-block" aria-label="AI rewrite">
+          <h3>Improve the whole CV with AI</h3>
+          <p class="muted small">
+            The AI rebuilds your CV into a clean ATS structure and rewrites it to the recruiter standard. Your email, phone and links are never sent.
+            Review each section before accepting it.
+          </p>
+          @if (!aiConsent()) {
+            <p class="ed-notice">Turn on AI features in <a routerLink="/settings" class="link">Settings</a> to use AI rewriting.</p>
+          }
+          <button type="button" class="btn btn--primary btn--sm" [disabled]="rewriteLoading() || !aiConsent()" (click)="runRewrite()">
+            <app-icon name="sparkle" [size]="15" /> {{ rewriteLoading() ? 'Rewriting… (up to a minute)' : rewrite() ? 'Rewrite again' : 'Improve with AI' }}
+          </button>
+          @if (rewriteError()) {
+            <div class="alert alert--error" role="alert"><p>{{ rewriteError() }}</p></div>
+          }
+          @if (rewrite(); as result) {
+            @if (result.score_before !== null && result.score_after !== null) {
+              <p class="rv-delta">CV quality: <strong>{{ result.score_before }}</strong> → <strong>{{ result.score_after }}</strong> with every change accepted</p>
+            }
+            @if (result.job_title) { <p class="muted small">Tailored to: <strong>{{ result.job_title }}</strong></p> }
+            @if (pendingSections().length) {
+              <div class="rv-actions">
+                <button type="button" class="btn btn--secondary btn--sm" (click)="acceptAllSections()">Accept all {{ pendingSections().length }} sections</button>
+              </div>
+            } @else {
+              <p class="muted">{{ acceptedCount() ? 'All reviewed. Your accepted changes are in the editor.' : 'Nothing left to review.' }}</p>
+            }
+            @for (section of pendingSections(); track section.id) {
+              <article class="rv-section">
+                <header>
+                  <h4>{{ sectionLabel(section.id) }}</h4>
+                  @if (section.note) { <p class="muted small">{{ section.note }}</p> }
+                </header>
+                <div class="rv-compare">
+                  <div class="rv-before">
+                    <p class="rv-tag">Now</p>
+                    @for (line of sectionLines(doc(), section.id); track $index) { <p>{{ line }}</p> } @empty { <p class="muted">Empty</p> }
+                  </div>
+                  <div class="rv-after">
+                    <p class="rv-tag">Improved</p>
+                    @for (line of sectionLines(result.improved, section.id); track $index) { <p>{{ line }}</p> } @empty { <p class="muted">Empty</p> }
+                  </div>
+                </div>
+                @for (warning of section.warnings; track $index) {
+                  <p class="ed-sg__warning"><app-icon name="alert" [size]="13" /> {{ warning }}</p>
+                }
+                <div class="ed-sg__actions">
+                  <button type="button" class="btn btn--primary btn--sm" (click)="acceptSection(section.id)">Accept</button>
+                  <button type="button" class="btn btn--ghost btn--sm" (click)="keepSection(section.id)">Keep mine</button>
+                </div>
+              </article>
+            }
+          }
+        </section>
+      } @else if (panel() === 'ats') {
         @if (atsLoading()) {
           <p class="muted">Checking…</p>
         } @else if (atsReport(); as report) {

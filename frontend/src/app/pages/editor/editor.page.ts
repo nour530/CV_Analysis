@@ -22,6 +22,9 @@ import {
   CvProject,
   CvSuggestion,
   CvSuggestionResponse,
+  CvEvaluation,
+  CvRewriteResponse,
+  CvSectionId,
   CvTemplate,
   ResumeResponse,
   emptyCv,
@@ -29,6 +32,7 @@ import {
 } from '../../core/resume.models';
 import { AtsReportComponent } from '../../shared/components/ats-report/ats-report';
 import { IconComponent } from '../../shared/components/icon/icon';
+import { ScoreRingComponent } from '../../shared/components/score-ring/score-ring';
 import { StatePanelComponent } from '../../shared/components/state-panel/state-panel';
 
 const AUTOSAVE_MS = 1500;
@@ -61,7 +65,7 @@ type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
 @Component({
   selector: 'app-editor-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, AtsReportComponent, IconComponent, StatePanelComponent],
+  imports: [RouterLink, AtsReportComponent, IconComponent, ScoreRingComponent, StatePanelComponent],
   templateUrl: './editor.page.html',
   styleUrl: './editor.page.css',
 })
@@ -82,7 +86,23 @@ export class EditorPage {
   readonly saveError = signal<string>('');
   readonly atsScore = signal<number | null>(null);
 
-  readonly panel = signal<'none' | 'suggestions' | 'ats'>('none');
+  readonly panel = signal<'none' | 'suggestions' | 'ats' | 'review'>('none');
+
+  // AI review: our model's scores, then a full rewrite reviewed per section.
+  readonly evaluation = signal<CvEvaluation | null>(null);
+  readonly evaluationLoading = signal(false);
+  readonly rewrite = signal<CvRewriteResponse | null>(null);
+  readonly rewriteLoading = signal(false);
+  readonly rewriteError = signal('');
+  readonly sectionDecisions = signal<Partial<Record<CvSectionId, 'accepted' | 'kept'>>>({});
+  readonly pendingSections = computed(() => {
+    const result = this.rewrite();
+    const decided = this.sectionDecisions();
+    return result ? result.sections.filter((section) => section.changed && !decided[section.id]) : [];
+  });
+  readonly acceptedCount = computed(
+    () => Object.values(this.sectionDecisions()).filter((decision) => decision === 'accepted').length,
+  );
   readonly useAi = signal(false);
   readonly aiConsent = signal(false);
   readonly suggestions = signal<CvSuggestionResponse | null>(null);
@@ -488,6 +508,120 @@ export class EditorPage {
     }
   }
 
+  // -- AI review -------------------------------------------------------------------------
+
+  openReview(): void {
+    const record = this.record();
+    if (!record) {
+      return;
+    }
+    this.panel.set('review');
+    this.evaluationLoading.set(true);
+    this.pendingSave()
+      .pipe(
+        switchMap(() => this.api.evaluateResume(record.id)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (result) => {
+          this.evaluation.set(result);
+          this.evaluationLoading.set(false);
+        },
+        error: () => this.evaluationLoading.set(false),
+      });
+  }
+
+  runRewrite(): void {
+    const record = this.record();
+    if (!record || this.rewriteLoading()) {
+      return;
+    }
+    this.rewriteLoading.set(true);
+    this.rewriteError.set('');
+    this.pendingSave()
+      .pipe(
+        switchMap(() => this.api.rewriteResume(record.id, this.jobId())),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (result) => {
+          this.rewrite.set(result);
+          this.sectionDecisions.set({});
+          this.rewriteLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.rewriteError.set(toApiError(error).message);
+          this.rewriteLoading.set(false);
+        },
+      });
+  }
+
+  acceptSection(id: CvSectionId): void {
+    const improved = this.rewrite()?.improved;
+    if (!improved) {
+      return;
+    }
+    this.edit((draft) => {
+      if (id === 'contact') {
+        draft.contact.full_name = improved.contact.full_name;
+        draft.contact.headline = improved.contact.headline;
+        draft.contact.location = improved.contact.location;
+      } else {
+        (draft as unknown as Record<string, unknown>)[id] = structuredClone(improved[id]);
+      }
+    });
+    this.sectionDecisions.update((current) => ({ ...current, [id]: 'accepted' }));
+  }
+
+  keepSection(id: CvSectionId): void {
+    this.sectionDecisions.update((current) => ({ ...current, [id]: 'kept' }));
+  }
+
+  acceptAllSections(): void {
+    for (const section of this.pendingSections()) {
+      this.acceptSection(section.id);
+    }
+  }
+
+  sectionLabel(id: CvSectionId): string {
+    return id === 'contact' ? (this.language() === 'fr' ? 'Identité' : 'Name and headline') : this.headings()[id];
+  }
+
+  /** A section as short lines of text, to compare before and after. */
+  sectionLines(doc: CvDocument, id: CvSectionId): string[] {
+    switch (id) {
+      case 'contact':
+        return [doc.contact.full_name, doc.contact.headline, doc.contact.location].filter((v): v is string => !!v);
+      case 'summary':
+        return doc.summary ? [doc.summary] : [];
+      case 'experience':
+        return doc.experience.flatMap((e) => [
+          [[e.title, e.company].filter(Boolean).join(' — '), this.dateRange(e.start, e.end, e.current)].filter(Boolean).join(' · '),
+          ...e.bullets.map((b) => `• ${b}`),
+        ]);
+      case 'education':
+        return doc.education.flatMap((e) => [
+          [[e.degree, e.school].filter(Boolean).join(' — '), this.dateRange(e.start, e.end)].filter(Boolean).join(' · '),
+          ...e.details.map((d) => `• ${d}`),
+        ]);
+      case 'skills':
+        return doc.skills.length ? [doc.skills.join(', ')] : [];
+      case 'languages':
+        return doc.languages.map((l) => (l.level ? `${l.name}: ${l.level}` : l.name));
+      case 'certifications':
+        return doc.certifications.map((c) => `• ${c}`);
+      case 'projects':
+        return doc.projects.flatMap((p) => [p.name ?? '', ...(p.description ? [p.description] : []), ...p.bullets.map((b) => `• ${b}`)]);
+    }
+  }
+
+  scoreTone(score: number | null): 'strong' | 'moderate' | 'weak' | 'neutral' {
+    if (score === null) {
+      return 'neutral';
+    }
+    return score >= 70 ? 'strong' : score >= 45 ? 'moderate' : 'weak';
+  }
+
   // -- suggestions ----------------------------------------------------------------------
 
   toggleAi(event: Event): void {
@@ -597,6 +731,11 @@ export class EditorPage {
     this.suggestions.update((current) =>
       current ? { ...current, suggestions: current.suggestions.filter((entry) => entry.id !== item.id) } : current,
     );
+  }
+
+  panelTitle(): string {
+    const panel = this.panel();
+    return panel === 'ats' ? 'ATS check' : panel === 'review' ? 'AI review' : 'Tips to improve your CV';
   }
 
   @HostListener('document:keydown.escape')

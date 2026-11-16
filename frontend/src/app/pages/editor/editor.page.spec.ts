@@ -65,6 +65,33 @@ describe('EditorPage', () => {
     checkResumeAts: vi.fn(() => NEVER),
     exportResumeDocx: vi.fn(() => of(new Blob(['docx']))),
     exportResumePdf: vi.fn(() => of(new Blob(['%PDF']))),
+    evaluateResume: vi.fn(() =>
+      of({
+        available: true,
+        overall: 64,
+        criteria: [{ id: 'achievements', label: 'Achievements and impact', score: 5.5, evidence: ['1 of 2 bullet points show a figure.'] }],
+        checks: [{ id: 'email', label: 'Email address', ok: true }],
+        model: { kind: 'ridge', cvs: 1500 },
+        notice: null,
+      }),
+    ),
+    rewriteResume: vi.fn(() => {
+      const improved = record().content;
+      improved.summary = 'Data Analyst with 4 years of experience building Power BI dashboards.';
+      improved.experience[0].bullets = ['Built 12 Power BI dashboards for 150 managers', 'Wrote SQL pipelines cutting reporting time by [X%]'];
+      return of({
+        improved,
+        sections: [
+          { id: 'contact', changed: false, note: '', warnings: [] },
+          { id: 'summary', changed: true, note: 'Adds title and years.', warnings: [] },
+          { id: 'experience', changed: true, note: 'Results first.', warnings: ['Replace [X%] with your real figures, or remove them.'] },
+        ],
+        score_before: 64,
+        score_after: 81,
+        model: 'claude-opus-5-5',
+        job_title: null,
+      });
+    }),
   };
 
   beforeEach(async () => {
@@ -205,5 +232,33 @@ describe('EditorPage', () => {
     page.openAts();
     expect(api.updateResume).toHaveBeenCalledTimes(1);
     expect(api.updateResume.mock.invocationCallOrder[0]).toBeLessThan(api.checkResumeAts.mock.invocationCallOrder[0]);
+  });
+
+  it('shows the model scores and evidence in the AI review', () => {
+    page.openReview();
+    fixture.detectChanges();
+    expect(api.evaluateResume).toHaveBeenCalledWith('r1');
+    const text = fixture.nativeElement.querySelector('.ed-panel').textContent;
+    expect(text).toContain('trained on 1500 CVs');
+    expect(text).toContain('5.5/10');
+    expect(text).toContain('1 of 2 bullet points show a figure.');
+  });
+
+  it('rewrites the CV with AI and applies only the accepted sections', () => {
+    page.openReview();
+    page.runRewrite();
+    fixture.detectChanges();
+    expect(api.rewriteResume).toHaveBeenCalledWith('r1', 'job-9');
+    expect(page.pendingSections().map((s) => s.id)).toEqual(['summary', 'experience']);
+    const text = fixture.nativeElement.querySelector('.ed-panel').textContent;
+    expect(text).toContain('64 → 81');
+    expect(text).toContain('Replace [X%]');
+
+    page.keepSection('summary');
+    page.acceptSection('experience');
+    expect(page.doc().summary).toBe('Data analyst.');
+    expect(page.doc().experience[0].bullets[0]).toBe('Built 12 Power BI dashboards for 150 managers');
+    expect(page.pendingSections()).toEqual([]);
+    expect(page.acceptedCount()).toBe(1);
   });
 });

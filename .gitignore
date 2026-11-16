@@ -53,3 +53,6 @@ ai-engine/data/processed/
 
 # ESCO API raw page cache (large; regenerate with data_analysis/05_import_esco.py)
 ai-engine/data/raw/esco/
+
+# CV scorer labelling: in-progress batch state
+ai-engine/data/cv_quality/label_batch.json
