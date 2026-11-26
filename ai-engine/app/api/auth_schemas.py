@@ -71,6 +71,13 @@ class UpdateProfileRequest(AuthSchema):
         return normalized
 
 
+class DeleteAccountRequest(AuthSchema):
+    """Deleting an account needs the current password, so a stolen access
+    token alone cannot erase it."""
+
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+
 class ChangePasswordRequest(AuthSchema):
     current_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
     new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)

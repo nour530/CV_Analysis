@@ -168,6 +168,31 @@ describe('AuthService', () => {
     expect(store.cvProfile()?.analysis_id).toBe('analysis-2');
   });
 
+  it('deletes the account with the password, then clears the local session', () => {
+    store.setCv('my CV', PROFILE_RESPONSE);
+    let done = false;
+    service.deleteAccount('CorrectPassword1!').subscribe(() => (done = true));
+
+    const request = httpMock.expectOne(`${BASE_URL}/api/v1/auth/me`);
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.body).toEqual({ current_password: 'CorrectPassword1!' });
+    expect(request.request.withCredentials).toBe(true);
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(done).toBe(true);
+    expect(service.accessToken()).toBeNull();
+    expect(store.hasCv()).toBe(false);
+  });
+
+  it('keeps the session when account deletion is refused', () => {
+    let failed = '';
+    service.deleteAccount('wrong').subscribe({ error: (e) => (failed = e.message) });
+    httpMock
+      .expectOne(`${BASE_URL}/api/v1/auth/me`)
+      .flush({ error: { code: 'invalid_current_password', message: 'Current password is incorrect.' } }, { status: 401, statusText: 'Unauthorized' });
+    expect(failed).not.toBe('');
+  });
+
   it('clears stale CV data when the authenticated user has no saved CV', () => {
     store.setCv('stale CV', PROFILE_RESPONSE);
 

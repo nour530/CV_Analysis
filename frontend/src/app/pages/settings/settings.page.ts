@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 import { API_BASE_URL } from '../../core/api.config';
 import { ApiError, toApiError } from '../../core/api-error';
 import { HealthResponse } from '../../core/api.models';
+import { saveFile } from '../../core/save-file';
 import { JobMatchApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { formatDateTime } from '../../core/formatters';
@@ -85,6 +86,10 @@ export class SettingsPage {
   readonly passwordSaving = signal(false);
   readonly logoutSaving = signal(false);
   readonly clearing = signal(false);
+  readonly exporting = signal(false);
+  readonly deleting = signal(false);
+  readonly deletePassword = signal('');
+  readonly deleteConfirmed = signal(false);
   readonly feedback = signal('');
   readonly feedbackTone = signal<'success' | 'error'>('success');
   readonly checkingConnection = signal(false);
@@ -239,6 +244,43 @@ export class SettingsPage {
         error: (error: unknown) => {
           this.showFeedback(toApiError(error).message, 'error');
           this.passwordSaving.set(false);
+        },
+      });
+  }
+
+  async downloadMyData(): Promise<void> {
+    if (this.exporting()) {
+      return;
+    }
+    this.exporting.set(true);
+    try {
+      const result = await saveFile(this.api.exportAccountData(), 'jobmatch-my-data.json', 'json');
+      if (result !== 'cancelled') {
+        this.showFeedback('Your data was downloaded.', 'success');
+      }
+    } catch (error) {
+      this.showFeedback(toApiError(error).message, 'error');
+    } finally {
+      this.exporting.set(false);
+    }
+  }
+
+  deleteAccount(): void {
+    if (!this.deleteConfirmed() || !this.deletePassword() || this.deleting()) {
+      return;
+    }
+    this.deleting.set(true);
+    this.auth
+      .deleteAccount(this.deletePassword())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.deleting.set(false);
+          void this.router.navigate(['/'], { queryParams: { deleted: 1 } });
+        },
+        error: (error: unknown) => {
+          this.showFeedback(toApiError(error).message, 'error');
+          this.deleting.set(false);
         },
       });
   }

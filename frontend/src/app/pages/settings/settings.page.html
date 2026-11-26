@@ -271,6 +271,10 @@
         </div>
 
         <div class="row">
+          <button type="button" class="btn btn--secondary btn--sm" [disabled]="exporting()" (click)="downloadMyData()">
+            <app-icon name="download" [size]="14" />
+            {{ exporting() ? 'Preparing…' : 'Download my data' }}
+          </button>
           <button type="button" class="btn btn--secondary btn--sm" (click)="clearActivity()">
             Clear recent activity
           </button>
@@ -292,6 +296,48 @@
             Delete CV data
           </button>
         </div>
+      </section>
+
+      <section class="card card--padded" aria-labelledby="delete-title">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Danger zone</p>
+            <h2 class="card__title" id="delete-title">Delete account</h2>
+            <p class="card__subtitle">
+              Permanently deletes your account, CVs, analyses, applications, chats and settings.
+              This can't be undone. Download your data first if you want a copy.
+            </p>
+          </div>
+        </div>
+        <form class="stack" (submit)="$event.preventDefault(); deleteAccount()">
+          <div class="field">
+            <label for="delete-password">Current password</label>
+            <input
+              id="delete-password"
+              class="input"
+              type="password"
+              autocomplete="current-password"
+              [value]="deletePassword()"
+              (input)="deletePassword.set($any($event.target).value)"
+            />
+          </div>
+          <label class="checkbox">
+            <input
+              id="delete-confirm"
+              type="checkbox"
+              [checked]="deleteConfirmed()"
+              (change)="deleteConfirmed.set($any($event.target).checked)"
+            />
+            <span>I understand my account and all its data will be permanently deleted.</span>
+          </label>
+          <button
+            type="submit"
+            class="btn btn--danger"
+            [disabled]="deleting() || !deleteConfirmed() || !deletePassword()"
+          >
+            {{ deleting() ? 'Deleting…' : 'Delete my account' }}
+          </button>
+        </form>
       </section>
     </div>
   </div>
