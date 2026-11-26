@@ -76,6 +76,33 @@ def request_params(cv: LabelCv, *, model: str, effort: str) -> dict:
     }
 
 
+OLLAMA_URL = "http://127.0.0.1:11434"
+
+
+def ollama_grade(cv: LabelCv, *, model: str, url: str = OLLAMA_URL, client=None) -> dict[str, int] | None:  # noqa: ANN001
+    """Grade one CV with a local Ollama model (free, nothing leaves the PC).
+    Temperature 0 keeps grades stable; the rubric schema is enforced."""
+    import httpx
+
+    http = client or httpx
+    response = http.post(
+        f"{url}/api/chat",
+        json={
+            "model": model,
+            "stream": False,
+            "format": label_schema(),
+            "options": {"temperature": 0, "num_ctx": 8192},
+            "messages": [
+                {"role": "system", "content": GRADING_INSTRUCTIONS},
+                {"role": "user", "content": f"<cv>\n{cv.text}\n</cv>\n\nGrade this CV."},
+            ],
+        },
+        timeout=900,
+    )
+    response.raise_for_status()
+    return parse_result_text(response.json().get("message", {}).get("content", ""))
+
+
 def estimate_cost(cvs: list[LabelCv], model: str, *, output_tokens_per_cv: int = 1500) -> tuple[int, float]:
     """Rough (input tokens, USD) for a batch: ~3.5 characters per token,
     and output tokens include the model's thinking."""

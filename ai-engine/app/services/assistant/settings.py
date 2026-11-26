@@ -4,6 +4,8 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from app.services.local_llm import provider
+
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
@@ -17,9 +19,10 @@ def _int(env: Mapping[str, str], name: str, default: int, low: int, high: int) -
 
 @dataclass(frozen=True, slots=True)
 class AssistantSettings:
-    """Career assistant configuration (Anthropic Claude).
+    """Career assistant configuration (Anthropic Claude, or a free local model).
 
     ASSISTANT_ENABLED   turn the assistant on (default false)
+    AI_PROVIDER         anthropic (default) or ollama (free, local; see app/services/local_llm.py)
     ANTHROPIC_API_KEY   read by the Anthropic SDK; never stored by the app
     ASSISTANT_MODEL     default claude-opus-5-5
     ASSISTANT_EFFORT    low | medium | high | xhigh | max (default low: chat)
@@ -34,9 +37,12 @@ class AssistantSettings:
     timeout_seconds: int = 90
     quota_attempts: int = 60
     quota_window_seconds: int = 3600
+    provider: str = "anthropic"
 
     @property
     def has_credentials(self) -> bool:
+        if self.provider == "ollama":
+            return True  # no key; whether Ollama runs is checked on each call
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
     @property
@@ -57,4 +63,5 @@ class AssistantSettings:
             timeout_seconds=_int(env, "ASSISTANT_TIMEOUT_SECONDS", 90, 10, 600),
             quota_attempts=_int(env, "USER_QUOTA_ASSISTANT_ATTEMPTS", 60, 0, 10_000),
             quota_window_seconds=_int(env, "USER_QUOTA_ASSISTANT_WINDOW_SECONDS", 3600, 60, 86_400),
+            provider=provider(env),
         )

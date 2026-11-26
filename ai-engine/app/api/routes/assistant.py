@@ -112,6 +112,7 @@ def assistant_status(
         enabled=settings.ready,
         personalised=_personalised(db, context.user.id, api_settings),
         reason=reason,
+        provider="Local AI (Ollama)" if settings.provider == "ollama" else "Anthropic Claude",
     )
 
 

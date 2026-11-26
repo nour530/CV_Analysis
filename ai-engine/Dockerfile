@@ -13,7 +13,7 @@ RUN groupadd --system jobmatch \
     && useradd --system --gid jobmatch --create-home jobmatch
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --retries 5 -r requirements.txt
+RUN pip install --no-cache-dir --retries 5 --require-hashes -r requirements.txt
 
 COPY alembic.ini ./
 COPY migrations ./migrations

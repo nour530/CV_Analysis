@@ -10,6 +10,7 @@ import anthropic
 
 from app.services.assistant.settings import AssistantSettings
 from app.services.assistant.tools import TOOLS, ToolExecutor
+from app.services import local_llm
 
 LOGGER = logging.getLogger("jobmatch.assistant")
 
@@ -87,6 +88,8 @@ class CareerAssistant:
         while messages and messages[0]["role"] != "user":
             messages.pop(0)
         messages.append({"role": "user", "content": message})
+        if self.settings.provider == "ollama":
+            return self._reply_locally(messages, personal_context, executor)
 
         tools_used: list[str] = []
         response = None
@@ -133,3 +136,43 @@ class CareerAssistant:
         if not text:
             text = "I couldn't put together an answer this time. Could you rephrase your question?"
         return AssistantReply(text=text, tools_used=tools_used, model=getattr(response, "model", None))
+
+    def _reply_locally(
+        self, messages: list[dict[str, Any]], personal_context: str | None, executor: ToolExecutor
+    ) -> AssistantReply:
+        """The same conversation on a free local model through Ollama."""
+        settings = local_llm.LocalLLMSettings.from_env()
+        context = f"{PERSONAL_HEADER}\n{personal_context}" if personal_context else NO_CONTEXT_NOTE
+        chat: list[dict[str, Any]] = [{"role": "system", "content": f"{SYSTEM_PROMPT}\n\n{context}"}, *messages]
+        tools = local_llm.ollama_tools(TOOLS)
+        tools_used: list[str] = []
+        reply: dict[str, Any] = {}
+        for round_index in range(self.settings.max_tool_rounds + 1):
+            try:
+                reply = local_llm.chat(settings, chat, tools=tools if round_index < self.settings.max_tool_rounds else None, client=self._client)
+            except local_llm.LocalLLMError as exc:
+                LOGGER.warning("assistant_local_error %s", exc)
+                raise AssistantUnavailableError(str(exc)) from exc
+            calls = reply.get("tool_calls") or []
+            if not calls:
+                break
+            chat.append({"role": "assistant", "content": reply.get("content") or "", "tool_calls": calls})
+            for call in calls:
+                function = call.get("function") or {}
+                name = str(function.get("name") or "")
+                arguments = function.get("arguments") or {}
+                if isinstance(arguments, str):
+                    import json
+
+                    try:
+                        arguments = json.loads(arguments)
+                    except ValueError:
+                        arguments = {}
+                tools_used.append(name)
+                output, _ = executor.run(name, dict(arguments))
+                chat.append({"role": "tool", "content": output, "tool_name": name})
+        text = (reply.get("content") or "").strip()
+        if not text:
+            text = "I couldn't put together an answer this time. Could you rephrase your question?"
+        return AssistantReply(text=text, tools_used=tools_used, model=f"ollama:{settings.model}")
+

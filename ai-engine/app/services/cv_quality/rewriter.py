@@ -29,6 +29,7 @@ from app.schemas.cv_document import (
     CvLanguage,
     CvProject,
 )
+from app.services import local_llm
 from app.services.ats.checker import LINKEDIN_PATTERN, PHONE_PATTERN
 from app.services.cv_builder.render import render_text
 from app.services.documents.layout import EMAIL_PATTERN
@@ -117,6 +118,7 @@ class CvRewriteSettings:
     model: str = "claude-opus-5-5"
     effort: str = "medium"
     timeout_seconds: int = 180
+    provider: str = "anthropic"
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> CvRewriteSettings:
@@ -130,10 +132,12 @@ class CvRewriteSettings:
             model=(env.get("CV_AI_MODEL") or "claude-opus-5-5").strip(),
             effort=effort if effort in {"low", "medium", "high"} else "medium",
             timeout_seconds=timeout,
+            provider=local_llm.provider(env),
         )
 
-    @staticmethod
-    def has_credentials() -> bool:
+    def has_credentials(self) -> bool:
+        if self.provider == "ollama":
+            return True  # no key; whether Ollama runs is checked on each call
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
@@ -366,6 +370,8 @@ class CvRewriter:
 
     def rewrite(self, doc: CvDocument, *, language: str, job_title: str | None = None, job_skills: list[str] | None = None) -> CvRewrite:
         params, source_text = self.build_request(doc, language=language, job_title=job_title, job_skills=job_skills)
+        if self.settings.provider == "ollama":
+            return self._rewrite_locally(doc, params, source_text, language)
         try:
             response = self.client.messages.create(**params)
         except anthropic.AuthenticationError as exc:
@@ -387,3 +393,20 @@ class CvRewriter:
         notes = {item["section"]: item["note"][:300] for item in data.get("changes", []) if item.get("section") in SECTIONS}
         sections = review_sections(doc, improved, source_text, notes, language)
         return CvRewrite(improved=improved, sections=sections, model=getattr(response, "model", self.settings.model))
+
+    def _rewrite_locally(self, doc: CvDocument, params: dict, source_text: str, language: str) -> CvRewrite:
+        """The same rewrite on a free local model through Ollama."""
+        settings = local_llm.LocalLLMSettings.from_env()
+        messages = [{"role": "system", "content": params["system"]}, *params["messages"]]
+        try:
+            message = local_llm.chat(settings, messages, schema=OUTPUT_SCHEMA, temperature=0.2, client=self._client)
+            data = json.loads(message.get("content") or "")
+            improved = to_document(data, doc)
+        except local_llm.LocalLLMError as exc:
+            raise CvRewriteError(str(exc)) from exc
+        except (ValueError, KeyError, TypeError) as exc:
+            raise CvRewriteError("The AI returned an unreadable answer. Try again.") from exc
+        notes = {item["section"]: item["note"][:300] for item in data.get("changes", []) if item.get("section") in SECTIONS}
+        sections = review_sections(doc, improved, source_text, notes, language)
+        return CvRewrite(improved=improved, sections=sections, model=f"ollama:{settings.model}")
+
