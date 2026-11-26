@@ -42,6 +42,9 @@ Append-only. Supersede by adding a new entry that points at the old one; never e
 - **Do not re-propose:** relicensing to Apache-2.0, because MIT is already granted for every
   published version and nothing requires a change. Restructuring the two-root layout,
   because it is clear and the churn outweighs the value.
+- **Result:** on branch `chore/config-audit` at `e6574ef`, CI succeeded for the first time:
+  backend tests, `pip-audit`, frontend `npm audit`, tests and build, the secret scan, and
+  both container images (run 45869203271). `main` stays red until this branch is merged.
 - **Local mitigation:** none found.
 - **Open for the owner:** confirm the tier answers, the copyright holder (`LICENSE` names
   "nour mansour"), and the GitHub security settings (secret scanning, push protection,
