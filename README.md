@@ -119,6 +119,34 @@ in front of nginx for production and use the public HTTPS frontend origin in
 `CORS_ORIGINS`. See `ai-engine/docs/phase-8.5.5-deployment-hardening.md` for
 Redis, readiness, logging, migration, backup, and troubleshooting details.
 
+### Backups
+
+The `backup` service writes a verified PostgreSQL dump every night (`BACKUP_INTERVAL_SECONDS`,
+default 86400) to `./backups` on the host (`BACKUP_DIR`), and deletes dumps older than
+`BACKUP_RETENTION_DAYS` (default 14). A dump is checked with `pg_restore --list` before it
+counts. The script is `ops/backup.sh`.
+
+A backup counts once it has been restored. Test a restore after setup, then every month. It
+restores the newest dump into a scratch database, compares row counts, and drops it:
+
+```bash
+docker compose run --rm backup bash /ops/backup.sh restore-test
+```
+
+To restore for real, stop the backend first, then load a dump over the live database:
+
+```bash
+docker compose stop backend job-sync maintenance
+docker compose run --rm backup pg_restore --clean --if-exists --no-owner --dbname=jobmatch /backups/jobmatch-<time>.dump
+docker compose start backend job-sync maintenance
+```
+
+`./backups` is on the same machine as the database. Copy it somewhere else as well, such as
+cloud storage or another machine, so one disk failure can't take both.
+
+The `maintenance` service deletes expired sessions and refresh tokens once a day
+(`SESSION_CLEANUP_INTERVAL_SECONDS`).
+
 ## Frontend
 
 The Angular workspace is in `frontend/`. Development uses the API base URL in

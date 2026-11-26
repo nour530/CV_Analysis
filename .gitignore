@@ -56,3 +56,6 @@ ai-engine/data/raw/esco/
 
 # CV scorer labelling: in-progress batch state
 ai-engine/data/cv_quality/label_batch.json
+
+# Database backups written by the backup service (docker-compose.yml)
+/backups/
