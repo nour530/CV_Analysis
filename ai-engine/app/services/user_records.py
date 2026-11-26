@@ -24,6 +24,44 @@ from app.schemas.hybrid_match import ResumeProfile
 from app.services.documents.extraction import ExtractedDocument
 from app.services.matching.application import CVProfileResult
 
+# Retention: each user keeps their newest records only. Older ones are deleted
+# when a new one is saved, so personal data (full CV text) isn't kept forever.
+CV_ANALYSIS_KEEP = 50
+SAVED_MATCH_KEEP = 100
+
+
+def _prune_cv_analyses(db: Session, user_id: str) -> int:
+    keep = CV_ANALYSIS_KEEP
+    old_ids = db.scalars(
+        select(CVAnalysis.id)
+        .where(CVAnalysis.user_id == user_id)
+        .order_by(CVAnalysis.created_at.desc(), CVAnalysis.id.desc())
+        .offset(keep)
+    ).all()
+    if not old_ids:
+        return 0
+    # CV documents remember the analysis they came from. Clear that link first:
+    # SQLite doesn't apply ON DELETE SET NULL on its own.
+    db.execute(
+        update(CvDocumentRecord)
+        .where(CvDocumentRecord.source_analysis_id.in_(old_ids))
+        .values(source_analysis_id=None)
+    )
+    return db.execute(delete(CVAnalysis).where(CVAnalysis.id.in_(old_ids))).rowcount
+
+
+def _prune_matches(db: Session, user_id: str) -> int:
+    keep = SAVED_MATCH_KEEP
+    old_ids = db.scalars(
+        select(SavedMatch.id)
+        .where(SavedMatch.user_id == user_id)
+        .order_by(SavedMatch.created_at.desc(), SavedMatch.id.desc())
+        .offset(keep)
+    ).all()
+    if not old_ids:
+        return 0
+    return db.execute(delete(SavedMatch).where(SavedMatch.id.in_(old_ids))).rowcount
+
 
 def save_cv_analysis(
     db: Session,
@@ -74,6 +112,8 @@ def save_cv_analysis(
         ats_json=ats.model_dump(mode="json") if ats is not None else None,
     )
     db.add(analysis)
+    db.flush()
+    _prune_cv_analyses(db, user_id)
     db.commit()
     db.refresh(analysis)
     return analysis
@@ -210,6 +250,8 @@ def save_match(
         result_json=payload,
     )
     db.add(record)
+    db.flush()
+    _prune_matches(db, user_id)
     db.commit()
     db.refresh(record)
     return record
