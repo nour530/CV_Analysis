@@ -15,7 +15,9 @@ if str(AI_ENGINE_DIR) not in sys.path:
 
 _TEST_DB_DIR = Path(tempfile.mkdtemp(prefix="jobmatch-tests-"))
 os.environ["APP_ENV"] = "test"
-os.environ["DATABASE_URL"] = f"sqlite:///{(_TEST_DB_DIR / 'test.db').as_posix()}"
+# SQLite by default; CI also runs the suite against PostgreSQL, the production
+# database, by setting TEST_DATABASE_URL (see .github/workflows/ci.yml).
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{(_TEST_DB_DIR / 'test.db').as_posix()}"
 os.environ["JWT_SECRET_KEY"] = "test-only-jwt-secret-key-with-at-least-32-characters"
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["COOKIE_SAMESITE"] = "strict"
