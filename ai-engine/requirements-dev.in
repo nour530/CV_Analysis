@@ -2,3 +2,4 @@
 pytest>=9.0,<10
 fakeredis[lua]>=2.40,<3
 pandas>=3.1,<4  # tests/test_feature_engineering.py reads the engineered feature CSVs
+pip-audit>=2.10,<3  # CI dependency audit (see .github/workflows/ci.yml)
