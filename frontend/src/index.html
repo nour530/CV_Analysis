@@ -12,15 +12,7 @@
     <meta name="theme-color" content="#f5f6fb" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <script>
-      // Apply a saved light/dark choice before the app renders (avoids a flash).
-      try {
-        var theme = localStorage.getItem('jobmatch.theme');
-        if (theme === 'light' || theme === 'dark') {
-          document.documentElement.setAttribute('data-theme', theme);
-        }
-      } catch (error) {}
-    </script>
+    <script src="theme-init.js"></script>
   </head>
   <body>
     <app-root></app-root>

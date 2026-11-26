@@ -200,9 +200,33 @@ services:
     networks:
       - jobmatch
 
+  proxy:
+    # HTTPS with automatic certificates, in front of the frontend. Start with:
+    #   docker compose --profile https up -d   (and SITE_ADDRESS set in .env)
+    image: caddy:2.11.9-alpine
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - jobmatch
+
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   jobmatch:

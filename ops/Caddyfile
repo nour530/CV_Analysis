@@ -1,0 +1,17 @@
+# HTTPS in front of JobMatch AI (the `proxy` service, compose profile "https").
+# Caddy gets and renews a Let's Encrypt certificate for SITE_ADDRESS automatically:
+# point the domain's DNS at this machine and open ports 80 and 443 first.
+# SITE_ADDRESS=localhost uses Caddy's own local certificate, for testing.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	header {
+		# Browsers remember to use HTTPS only for this site for a year.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Caddy sets X-Forwarded-For to the client's address; nginx and the API read it
+	# through TRUSTED_PROXY_IPS, which covers this Compose network.
+	reverse_proxy frontend:80
+}
