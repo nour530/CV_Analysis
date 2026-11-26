@@ -13,8 +13,7 @@ it is `python`.
 |---|---|---|
 | Install backend (exactly as CI) | `ai-engine/` | `python -m pip install --require-hashes -r requirements-dev.txt` |
 | Backend tests (all ~300) | `ai-engine/` | `python -m pytest -q` |
-| Lint and format check | `ai-engine/` | `python -m ruff check . && python -m ruff format --check .` |
-| Dependency audit | `ai-engine/` | `python -m pip_audit -r requirements.txt` |
+| Dependency audit (as CI) | `ai-engine/` | `python -m pip_audit -r requirements-dev.txt --require-hashes --disable-pip` |
 | Database migrations (local only) | `ai-engine/` | `python -m alembic upgrade head` |
 | Run the API (local) | `ai-engine/` | `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload` |
 | Install frontend | `frontend/` | `npm ci` |
@@ -35,6 +34,9 @@ rm .lock-constraints.txt
 
 To upgrade a package on purpose, change its range in the `.in` file and compile with
 `--upgrade-package <name>`. Then verify in a fresh venv installed with `--require-hashes`.
+
+There is no lint or format gate yet. Adding ruff is waiting on the owner's decision (see
+`docs/decisions.md`), so don't reformat files that aren't part of a change.
 
 ## Layout
 

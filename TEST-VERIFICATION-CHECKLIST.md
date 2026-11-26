@@ -23,7 +23,8 @@ Run before claiming any task complete. Answer from output, not from memory.
 
 ## Did the gates run
 
-- [ ] Ruff lint and format check, `pip-audit` and `npm audit` ran and passed.
+- [ ] `pip-audit` and `npm audit --omit=dev` ran and passed. (There is no lint or format gate
+      yet; see `docs/decisions.md`.)
 - [ ] CI is green **on the remote**, on the pushed commit. Local green is not remote green.
 
 ## What I did not check

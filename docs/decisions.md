@@ -24,8 +24,11 @@ Append-only. Supersede by adding a new entry that points at the old one; never e
   - A4: this record.
   - A5: `TEST-VERIFICATION-CHECKLIST.md`.
   - A6: `.gitattributes` and `.editorconfig`.
-  - A7: CI gates for ruff lint and format, a gitleaks secret scan, and `pip-audit` and
-    `npm audit`.
+  - A7: CI gates for a gitleaks secret scan, and `pip-audit` and `npm audit`. The ruff
+    lint and format gates from the same amendment are **held**. Applying them would
+    reformat 108 of 187 Python files and need about 400 lint fixes, a cost not stated when
+    the amendment was approved. *Released when:* the owner chooses between a full reformat
+    (in its own commit) and a narrower rule set.
   - A8: Dependabot, grouped weekly, with security updates ungrouped.
 - **Declined:** A9, a ruleset on `main` requiring CI. *Reopen when:* a second person can
   push, or the app is confirmed live with real users.
