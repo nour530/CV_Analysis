@@ -132,6 +132,56 @@ services:
     networks:
       - jobmatch
 
+  maintenance:
+    build:
+      context: ./ai-engine
+    # Deletes expired sign-in sessions and refresh tokens once a day, so those
+    # tables don't grow with every sign-in forever.
+    command:
+      - sh
+      - -c
+      - while true; do python -m app.cli cleanup-sessions || echo "cleanup-sessions failed"; sleep ${SESSION_CLEANUP_INTERVAL_SECONDS:-86400}; done
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-jobmatch}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-jobmatch}}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      ENABLE_HSTS: ${ENABLE_HSTS:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to the public HTTPS frontend origin}
+      LOG_JSON: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - jobmatch
+
+  backup:
+    # Same major version as the db service, so pg_dump matches the server.
+    image: postgres:16-alpine
+    # Nightly verified dumps to BACKUP_DIR on the host; see README "Backups".
+    # Restore test: docker compose run --rm backup bash /ops/backup.sh restore-test
+    command: ["bash", "/ops/backup.sh", "loop"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-jobmatch}
+      PGDATABASE: ${POSTGRES_DB:-jobmatch}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./ops/backup.sh:/ops/backup.sh:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - jobmatch
+
   frontend:
     build:
       context: ./frontend
@@ -150,9 +200,33 @@ services:
     networks:
       - jobmatch
 
+  proxy:
+    # HTTPS with automatic certificates, in front of the frontend. Start with:
+    #   docker compose --profile https up -d   (and SITE_ADDRESS set in .env)
+    image: caddy:2.11.9-alpine
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - jobmatch
+
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   jobmatch:

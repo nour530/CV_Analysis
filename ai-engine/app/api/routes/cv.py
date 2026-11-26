@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.api.auth_schemas import CVAnalysisHistoryResponse
 from app.api.dependencies import get_api_settings, get_matching_application_service
@@ -109,6 +110,16 @@ async def analyze_cv_upload(
     service: MatchingApplicationService = Depends(get_matching_application_service),
     db: Session = Depends(get_db),
 ) -> CVProfileResponse:
+    # The quota is checked before the file is parsed, so a user over quota
+    # can't make the server do the expensive part.
+    enforce_user_quota(
+        request,
+        user_id=context.user.id,
+        operation=CV_ANALYSIS,
+        limit=settings.user_quota_cv_analysis_attempts,
+        window_seconds=settings.user_quota_cv_analysis_window_seconds,
+        settings=settings,
+    )
     document = await read_document_upload(
         file,
         max_bytes=settings.max_upload_bytes,
@@ -120,27 +131,25 @@ async def analyze_cv_upload(
         request=request,
         user_id=context.user.id,
     )
-    enforce_user_quota(
-        request,
-        user_id=context.user.id,
-        operation=CV_ANALYSIS,
-        limit=settings.user_quota_cv_analysis_attempts,
-        window_seconds=settings.user_quota_cv_analysis_window_seconds,
-        settings=settings,
-    )
-    result = service.analyze_cv(
-        document.text,
-        resume_id=resume_id,
-        category=category,
-    )
-    analysis = save_cv_analysis(
-        db,
-        user_id=context.user.id,
-        result=result,
-        document=document,
-        ats=_ats_report(service, document.text, result, document),
-    )
-    return cv_analysis_to_response(analysis)
+
+    def analyze_and_save() -> CVProfileResponse:
+        result = service.analyze_cv(
+            document.text,
+            resume_id=resume_id,
+            category=category,
+        )
+        analysis = save_cv_analysis(
+            db,
+            user_id=context.user.id,
+            result=result,
+            document=document,
+            ats=_ats_report(service, document.text, result, document),
+        )
+        return cv_analysis_to_response(analysis)
+
+    # Analysis, the ATS check and the database write are synchronous and
+    # CPU-bound: keep them off the event loop.
+    return await run_in_threadpool(analyze_and_save)
 
 
 @router.post(

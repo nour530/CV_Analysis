@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 
 from fastapi import Request, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.api.errors import UploadValidationError
 from app.core.audit import audit_event
@@ -108,7 +109,10 @@ async def read_document_upload(
         raise
 
     try:
-        return _EXTRACTOR.extract(
+        # Parsing a PDF or DOCX is CPU work: run it off the event loop so one
+        # upload doesn't stall every other request on this worker.
+        return await run_in_threadpool(
+            _EXTRACTOR.extract,
             payload,
             filename=upload.filename or "",
             content_type=upload.content_type,

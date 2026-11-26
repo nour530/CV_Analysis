@@ -297,6 +297,67 @@ def test_cv_analysis_quota_is_per_user_and_audited(client_factory, caplog):
     assert quota_event["metadata"]["operation"] == "cv_analysis"
 
 
+def test_upload_over_quota_is_rejected_before_the_file_is_parsed(client_factory, monkeypatch):
+    import app.api.uploads as uploads
+
+    client = client_factory(
+        user_quota_cv_analysis_attempts=1,
+        user_quota_cv_analysis_window_seconds=300,
+    )
+    register_user(client)
+    parsed = []
+    original = uploads._EXTRACTOR.extract
+
+    def counting_extract(*args, **kwargs):
+        parsed.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(uploads._EXTRACTOR, "extract", counting_extract)
+    cv = ("resume.txt", b"Python developer using Docker and React.", "text/plain")
+
+    first = client.post("/api/v1/cv/analyze/upload", files={"file": cv})
+    second = client.post("/api/v1/cv/analyze/upload", files={"file": cv})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "usage_quota_exceeded"
+    assert len(parsed) == 1, "the over-quota upload must not be parsed"
+
+
+def test_upload_parsing_and_analysis_run_off_the_event_loop(client_factory, monkeypatch):
+    import threading
+
+    import app.api.routes.cv as cv_routes
+    import app.api.uploads as uploads
+
+    client = client_factory()
+    register_user(client)
+    threads: dict[str, str] = {}
+    original_extract = uploads._EXTRACTOR.extract
+    original_save = cv_routes.save_cv_analysis
+
+    def recording_extract(*args, **kwargs):
+        threads["extract"] = threading.current_thread().name
+        return original_extract(*args, **kwargs)
+
+    def recording_save(*args, **kwargs):
+        threads["save"] = threading.current_thread().name
+        return original_save(*args, **kwargs)
+
+    monkeypatch.setattr(uploads._EXTRACTOR, "extract", recording_extract)
+    monkeypatch.setattr(cv_routes, "save_cv_analysis", recording_save)
+    response = client.post(
+        "/api/v1/cv/analyze/upload",
+        files={"file": ("resume.txt", b"Python developer using Docker.", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    # Starlette's thread pool (AnyIO) names its threads "AnyIO worker thread";
+    # the event loop runs elsewhere, so blocking work there would show another name.
+    assert "worker" in threads["extract"].lower(), threads
+    assert "worker" in threads["save"].lower(), threads
+
+
 def test_validation_failure_does_not_consume_cv_quota(client_factory):
     client = client_factory(
         max_text_length=50,

@@ -114,10 +114,51 @@ docker compose up -d
 docker compose ps
 ```
 
-The frontend is available at <http://localhost:8080> by default. Terminate TLS
-in front of nginx for production and use the public HTTPS frontend origin in
-`CORS_ORIGINS`. See `ai-engine/docs/phase-8.5.5-deployment-hardening.md` for
+The frontend is available at <http://localhost:8080> by default.
+
+For production, serve it over HTTPS with the `proxy` service, which runs Caddy. Caddy gets
+and renews a Let's Encrypt certificate and adds HSTS. Point your domain's DNS at the machine,
+open ports 80 and 443, then set `SITE_ADDRESS` (for example `jobmatch.example.com`) and
+`CORS_ORIGINS=https://jobmatch.example.com` in `.env`, and start it:
+
+```bash
+docker compose --profile https up -d
+```
+
+Sign-in cookies are `Secure`, so sign-in only works over HTTPS. If you put a CDN or
+another proxy in front of Caddy, add its address ranges to `TRUSTED_PROXY_IPS`, or every
+visitor will share one rate-limit bucket. The web pages send a strict
+Content-Security-Policy from `frontend/nginx.conf`: scripts may load from the site itself
+only, so don't add inline scripts to `index.html`. See `ai-engine/docs/phase-8.5.5-deployment-hardening.md` for
 Redis, readiness, logging, migration, backup, and troubleshooting details.
+
+### Backups
+
+The `backup` service writes a verified PostgreSQL dump every night (`BACKUP_INTERVAL_SECONDS`,
+default 86400) to `./backups` on the host (`BACKUP_DIR`), and deletes dumps older than
+`BACKUP_RETENTION_DAYS` (default 14). A dump is checked with `pg_restore --list` before it
+counts. The script is `ops/backup.sh`.
+
+A backup counts once it has been restored. Test a restore after setup, then every month. It
+restores the newest dump into a scratch database, compares row counts, and drops it:
+
+```bash
+docker compose run --rm backup bash /ops/backup.sh restore-test
+```
+
+To restore for real, stop the backend first, then load a dump over the live database:
+
+```bash
+docker compose stop backend job-sync maintenance
+docker compose run --rm backup pg_restore --clean --if-exists --no-owner --dbname=jobmatch /backups/jobmatch-<time>.dump
+docker compose start backend job-sync maintenance
+```
+
+`./backups` is on the same machine as the database. Copy it somewhere else as well, such as
+cloud storage or another machine, so one disk failure can't take both.
+
+The `maintenance` service deletes expired sessions and refresh tokens once a day
+(`SESSION_CLEANUP_INTERVAL_SECONDS`).
 
 ## Frontend
 

@@ -22,6 +22,7 @@ export const FILE_TYPES = {
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     extension: '.docx',
   },
+  json: { description: 'JSON file', mime: 'application/json', extension: '.json' },
 } as const;
 
 /**

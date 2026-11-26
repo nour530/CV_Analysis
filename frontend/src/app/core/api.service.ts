@@ -357,6 +357,13 @@ export class JobMatchApiService {
     );
   }
 
+  /** Everything stored about the signed-in user, as a JSON file. */
+  exportAccountData(): Observable<Blob> {
+    return this.request(
+      this.http.get(`${this.baseUrl}${API_PREFIX}/account/export`, { responseType: 'blob' }),
+    );
+  }
+
   exportResumePdf(id: string): Observable<Blob> {
     return this.request(
       this.http.get(`${this.baseUrl}${API_PREFIX}/resumes/${encodeURIComponent(id)}/export.pdf`, {

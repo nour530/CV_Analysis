@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.api.auth_schemas import (
     AuthResponse,
     ChangePasswordRequest,
+    DeleteAccountRequest,
     LoginRequest,
     RegisterRequest,
     RegistrationResponse,
@@ -22,6 +23,7 @@ from app.auth.cookies import (
 from app.auth.dependencies import get_auth_context, get_auth_service
 from app.auth.service import AuthContext, AuthService, AuthServiceError, AuthTokens
 from app.auth.settings import AuthSettings, get_auth_settings
+from app.auth.passwords import verify_password
 from app.auth.tokens import hash_token
 from app.core.audit import audit_event, pseudonymize_identifier
 from app.core.rate_limit import (
@@ -31,6 +33,7 @@ from app.core.rate_limit import (
     make_rate_limit_key,
 )
 from app.db.models import User
+from app.services.account_data import delete_account
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -491,6 +494,61 @@ def update_me(
 ) -> UserResponse:
     user = service.update_profile(user=context.user, full_name=payload.full_name)
     return UserResponse.from_user(user)
+
+
+@router.delete(
+    "/me",
+    status_code=204,
+    summary="Delete the account and all of its data (asks for the password)",
+)
+def delete_me(
+    request: Request,
+    response: Response,
+    payload: DeleteAccountRequest,
+    context: AuthContext = Depends(get_auth_context),
+    settings: APISettings = Depends(get_api_settings),
+    auth_settings: AuthSettings = Depends(get_auth_settings),
+    service: AuthService = Depends(get_auth_service),
+) -> None:
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="delete-account-ip",
+        limit=settings.password_change_rate_limit_attempts * 4,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        trusted_proxy_networks=settings.trusted_proxy_networks,
+    )
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="delete-account-user",
+        limit=settings.password_change_rate_limit_attempts,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        discriminator=context.user.id,
+    )
+    if not verify_password(payload.current_password, context.user.password_hash):
+        _audit_auth_event(
+            request,
+            settings,
+            "account.delete.failed",
+            "failure",
+            user_id=context.user.id,
+            metadata={"reason": "invalid_current_password"},
+        )
+        raise APIError(status_code=401, code="invalid_current_password", message="Current password is incorrect.")
+    user_id = context.user.id
+    removed = delete_account(service.db, user_id)
+    clear_auth_cookies(response, auth_settings)
+    response.headers["Cache-Control"] = "no-store"
+    response.status_code = 204
+    _audit_auth_event(
+        request,
+        settings,
+        "account.deleted",
+        "success",
+        user_id=user_id,
+        metadata={"rows_removed": sum(removed.values())},
+    )
 
 
 @router.post(

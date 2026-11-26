@@ -200,6 +200,20 @@ export class AuthService {
       );
   }
 
+  /** Permanently delete the account and all its data, then sign out here. */
+  deleteAccount(currentPassword: string): Observable<void> {
+    return this.http
+      .delete<void>(`${this.baseUrl}${API_PREFIX}/auth/me`, {
+        body: { current_password: currentPassword },
+        withCredentials: true,
+      })
+      .pipe(
+        map(() => undefined),
+        tap(() => this.clearSession()),
+        catchError((error: unknown) => throwError(() => toApiError(error))),
+      );
+  }
+
   clearSession(): void {
     this.userState.set(null);
     this.accessTokenState.set(null);
