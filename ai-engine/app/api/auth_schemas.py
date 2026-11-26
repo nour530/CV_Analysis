@@ -71,6 +71,33 @@ class UpdateProfileRequest(AuthSchema):
         return normalized
 
 
+class PasswordResetRequest(AuthSchema):
+    email: EmailStr
+
+
+class PasswordResetConfirm(AuthSchema):
+    token: str = Field(min_length=10, max_length=200)
+    new_password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        errors = password_format_errors(value)
+        if errors:
+            raise ValueError(" ".join(errors))
+        return value
+
+
+class VerifyEmailRequest(AuthSchema):
+    token: str = Field(min_length=10, max_length=200)
+
+
+class AcceptedResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str
+
+
 class DeleteAccountRequest(AuthSchema):
     """Deleting an account needs the current password, so a stolen access
     token alone cannot erase it."""
@@ -98,6 +125,7 @@ class UserResponse(BaseModel):
     full_name: str
     email: EmailStr
     is_active: bool
+    email_verified: bool = False
     created_at: datetime
 
     @classmethod
@@ -107,6 +135,7 @@ class UserResponse(BaseModel):
             full_name=user.full_name,
             email=user.email,
             is_active=user.is_active,
+            email_verified=user.email_verified_at is not None,
             created_at=user.created_at,
         )
 

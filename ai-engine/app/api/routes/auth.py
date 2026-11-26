@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 
 from app.api.auth_schemas import (
+    AcceptedResponse,
     AuthResponse,
     ChangePasswordRequest,
     DeleteAccountRequest,
     LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RegisterRequest,
     RegistrationResponse,
     UpdateProfileRequest,
     UserResponse,
+    VerifyEmailRequest,
 )
 from app.api.errors import APIError
 from app.api.settings import APISettings, get_api_settings
@@ -32,8 +36,10 @@ from app.core.rate_limit import (
     enforce_rate_limit,
     make_rate_limit_key,
 )
-from app.db.models import User
+from app.db.models import User, utcnow
+from app.services import email_tokens
 from app.services.account_data import delete_account
+from app.services.mailer import Mailer, get_mailer
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -154,8 +160,10 @@ def _raise_auth_error(exc: AuthServiceError) -> APIError:
 def register(
     request: Request,
     payload: RegisterRequest,
+    background: BackgroundTasks,
     settings: APISettings = Depends(get_api_settings),
     service: AuthService = Depends(get_auth_service),
+    mailer: Mailer = Depends(get_mailer),
 ) -> RegistrationResponse:
     normalized_email = str(payload.email).strip().casefold()
     account_ref = pseudonymize_identifier(normalized_email)
@@ -225,7 +233,191 @@ def register(
             user_id=user.id,
             metadata={"account_ref": account_ref},
         )
+        _send_verification(service, mailer, background, user)
     return RegistrationResponse()
+
+
+RESET_ACCEPTED = "If an account uses this address, a reset link is on its way. It works for 30 minutes."
+
+
+def _send_verification(service: AuthService, mailer: Mailer, background: BackgroundTasks, user: User) -> None:
+    raw = email_tokens.issue(service.db, user, email_tokens.VERIFY)
+    link = f"{mailer.settings.public_url}/verify-email?token={raw}"
+    background.add_task(
+        mailer.send,
+        to=user.email,
+        subject="Confirm your email for JobMatch AI",
+        text=(
+            f"Hello {user.full_name.split()[0]},\n\n"
+            f"Confirm your email address for JobMatch AI by opening this link within 48 hours:\n{link}\n\n"
+            "If you didn't create an account, you can ignore this email.\n"
+        ),
+    )
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=AcceptedResponse,
+    status_code=202,
+    summary="Email a password reset link (same answer whether or not the account exists)",
+)
+def request_password_reset(
+    request: Request,
+    payload: PasswordResetRequest,
+    background: BackgroundTasks,
+    settings: APISettings = Depends(get_api_settings),
+    service: AuthService = Depends(get_auth_service),
+    mailer: Mailer = Depends(get_mailer),
+) -> AcceptedResponse:
+    normalized_email = str(payload.email).strip().casefold()
+    account_ref = pseudonymize_identifier(normalized_email)
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="password-reset-ip",
+        limit=settings.password_change_rate_limit_attempts * 4,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        trusted_proxy_networks=settings.trusted_proxy_networks,
+    )
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="password-reset-account",
+        limit=settings.password_change_rate_limit_attempts,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        discriminator=account_ref,
+    )
+    user = service.get_user_by_email(normalized_email)
+    _audit_auth_event(
+        request,
+        settings,
+        "auth.password_reset.requested",
+        "success",
+        user_id=user.id if user is not None else None,
+        metadata={"account_ref": account_ref},
+    )
+    if user is not None and user.is_active:
+        raw = email_tokens.issue(service.db, user, email_tokens.RESET)
+        link = f"{mailer.settings.public_url}/reset-password?token={raw}"
+        # Sent after the response, so its timing doesn't reveal whether the account exists.
+        background.add_task(
+            mailer.send,
+            to=user.email,
+            subject="Reset your JobMatch AI password",
+            text=(
+                f"Hello {user.full_name.split()[0]},\n\n"
+                f"Someone asked to reset the password for this address. To choose a new password, open this link within 30 minutes:\n{link}\n\n"
+                "If it wasn't you, ignore this email: your password stays the same.\n"
+            ),
+        )
+    return AcceptedResponse(message=RESET_ACCEPTED)
+
+
+@router.post(
+    "/password-reset/confirm",
+    status_code=204,
+    summary="Set a new password with a reset link, and sign out every session",
+)
+def confirm_password_reset(
+    request: Request,
+    payload: PasswordResetConfirm,
+    settings: APISettings = Depends(get_api_settings),
+    service: AuthService = Depends(get_auth_service),
+) -> None:
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="password-reset-confirm-ip",
+        limit=settings.password_change_rate_limit_attempts * 4,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        trusted_proxy_networks=settings.trusted_proxy_networks,
+    )
+    user = email_tokens.consume(service.db, payload.token, email_tokens.RESET)
+    if user is None:
+        _audit_auth_event(request, settings, "auth.password_reset.failed", "failure", metadata={"reason": "invalid_token"})
+        raise APIError(
+            status_code=400,
+            code="reset_token_invalid",
+            message="This reset link is invalid or has expired. Ask for a new one.",
+        )
+    try:
+        revoked = service.reset_password(
+            user=user,
+            new_password=payload.new_password,
+            check_common_password=settings.common_password_check_enabled,
+        )
+    except AuthServiceError as exc:
+        # Keep the link usable: the token claim is rolled back with the refused password.
+        service.db.rollback()
+        _audit_auth_event(
+            request, settings, "auth.password_reset.failed", "failure", user_id=user.id, metadata={"reason": exc.code}
+        )
+        raise _raise_auth_error(exc) from exc
+    _audit_auth_event(request, settings, "auth.password_reset.succeeded", "success", user_id=user.id)
+    if revoked:
+        _audit_auth_event(
+            request,
+            settings,
+            "auth.session.mass_revoked",
+            "success",
+            user_id=user.id,
+            metadata={"revoked_sessions": revoked, "reason": "password_reset"},
+        )
+
+
+@router.post("/verify-email", status_code=204, summary="Confirm the email address with the link sent to it")
+def verify_email(
+    request: Request,
+    payload: VerifyEmailRequest,
+    settings: APISettings = Depends(get_api_settings),
+    service: AuthService = Depends(get_auth_service),
+) -> None:
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="verify-email-ip",
+        limit=settings.password_change_rate_limit_attempts * 4,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        trusted_proxy_networks=settings.trusted_proxy_networks,
+    )
+    user = email_tokens.consume(service.db, payload.token, email_tokens.VERIFY)
+    if user is None:
+        raise APIError(
+            status_code=400,
+            code="verify_token_invalid",
+            message="This confirmation link is invalid or has expired. Sign in and ask for a new one.",
+        )
+    if user.email_verified_at is None:
+        user.email_verified_at = utcnow().replace(tzinfo=None)
+    service.db.commit()
+    _audit_auth_event(request, settings, "auth.email.verified", "success", user_id=user.id)
+
+
+@router.post(
+    "/verify-email/resend",
+    response_model=AcceptedResponse,
+    status_code=202,
+    summary="Send a new email confirmation link",
+)
+def resend_verification(
+    request: Request,
+    background: BackgroundTasks,
+    context: AuthContext = Depends(get_auth_context),
+    settings: APISettings = Depends(get_api_settings),
+    service: AuthService = Depends(get_auth_service),
+    mailer: Mailer = Depends(get_mailer),
+) -> AcceptedResponse:
+    _enforce_auth_rate_limit(
+        request,
+        settings,
+        scope="verify-email-resend-user",
+        limit=settings.password_change_rate_limit_attempts,
+        window_seconds=settings.password_change_rate_limit_window_seconds,
+        discriminator=context.user.id,
+    )
+    if context.user.email_verified_at is None:
+        _send_verification(service, mailer, background, context.user)
+    return AcceptedResponse(message="If your email isn't confirmed yet, a new link is on its way.")
 
 
 @router.post(

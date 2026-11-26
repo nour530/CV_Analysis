@@ -37,6 +37,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -113,6 +114,26 @@ class AuthSession(Base):
         back_populates="session",
         cascade="all, delete-orphan",
     )
+
+
+class EmailToken(Base):
+    """A single-use link sent by email: password reset or email verification.
+    Only a SHA-256 hash of the token is stored."""
+
+    __tablename__ = "email_tokens"
+    __table_args__ = (Index("ix_email_tokens_user_purpose", "user_id", "purpose"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class RefreshToken(Base):

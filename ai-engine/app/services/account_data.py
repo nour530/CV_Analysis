@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     AuthSession,
+    EmailToken,
     CandidateProfile,
     ChatMessage,
     CvDocumentRecord,
@@ -81,6 +82,9 @@ def delete_account(db: Session, user_id: str) -> dict[str, int]:
         session_ids = select(AuthSession.id).where(AuthSession.user_id == user_id)
         removed[RefreshToken.__tablename__] = db.execute(
             delete(RefreshToken).where(RefreshToken.session_id.in_(session_ids))
+        ).rowcount
+        removed[EmailToken.__tablename__] = db.execute(
+            delete(EmailToken).where(EmailToken.user_id == user_id)
         ).rowcount
         removed[AuthSession.__tablename__] = db.execute(
             delete(AuthSession).where(AuthSession.user_id == user_id)

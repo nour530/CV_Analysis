@@ -402,6 +402,24 @@ class AuthService:
         self.db.commit()
         return len(sessions)
 
+    def reset_password(self, *, user: User, new_password: str, check_common_password: bool = True) -> int:
+        """Set a new password after a valid reset link, and sign out every
+        session. The link proves control of the inbox, so the email counts as
+        verified too. Raises before changing anything if the password is refused."""
+        self._reject_common_password(new_password, check_common_password=check_common_password)
+        now = db_utcnow()
+        user.password_hash = hash_password(new_password)
+        user.updated_at = now
+        if user.email_verified_at is None:
+            user.email_verified_at = now
+        sessions = self.db.scalars(
+            select(AuthSession).where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
+        ).all()
+        for session in sessions:
+            self._revoke_session(session, now)
+        self.db.commit()
+        return len(sessions)
+
     def update_profile(self, *, user: User, full_name: str) -> User:
         user.full_name = full_name.strip()
         user.updated_at = db_utcnow()
